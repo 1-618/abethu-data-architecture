@@ -1,0 +1,2891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abethu LMS — Data Architecture Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#05070d; --surface:#0a0f1a; --surface2:#101828; --surface3:#16213a;
+  --border:#1a2540; --border2:#2a3a5e;
+  --text:#dde7f8; --dim:#8598b8; --faint:#4a5a7c;
+  --brand:#f5a623; --num:#f5c56b; --danger:#f0616d;
+  --org:#9aa8bd; --people:#63a6ff; --course:#35d39a; --delivery:#ff9a45; --learning:#ff7a7a;
+  --commercial:#e87cf7; --financial:#a995ff; --cert:#2bd4ee; --comms:#a8e04a;
+  --governance:#fbc531; --reviews:#f77ab8; --cms:#33d6c2;
+  --sql-kw:#ff9a45; --sql-tbl:#35d39a; --sql-val:#f5c56b; --type:#7fb6ff; --enum:#e87cf7;
+  --shadow:0 8px 30px rgba(0,0,0,.55);
+  --sans:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+body.light{
+  --bg:#f5efe2; --surface:#fffaf0; --surface2:#f3ead8; --surface3:#eadfc8;
+  --border:#e2d6bd; --border2:#cdbf9f;
+  --text:#272114; --dim:#6b614d; --faint:#a39780;
+  --brand:#b86a00; --num:#9a5a00; --danger:#c22a3a;
+  --org:#566173; --people:#1b5fd0; --course:#0a7d53; --delivery:#b9540a; --learning:#c82e2e;
+  --commercial:#9a1fb0; --financial:#6238cf; --cert:#087690; --comms:#48700a;
+  --governance:#946000; --reviews:#b9226f; --cms:#0b776d;
+  --sql-kw:#b9540a; --sql-tbl:#0a7d53; --sql-val:#9a5a00; --type:#1b5fd0; --enum:#9a1fb0;
+  --shadow:0 8px 30px rgba(80,60,20,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:13px;display:flex;flex-direction:column}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer;background:none;border:0}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px;border-radius:6px}
+*{scrollbar-width:thin;scrollbar-color:var(--border2) transparent}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
+::-webkit-scrollbar-track{background:transparent}
+.mono{font-family:var(--mono)}
+.num{color:var(--num);font-family:var(--mono)}
+
+.d-org{--c:var(--org)}.d-people{--c:var(--people)}.d-course{--c:var(--course)}.d-delivery{--c:var(--delivery)}
+.d-learning{--c:var(--learning)}.d-commercial{--c:var(--commercial)}.d-financial{--c:var(--financial)}
+.d-cert{--c:var(--cert)}.d-comms{--c:var(--comms)}.d-governance{--c:var(--governance)}.d-reviews{--c:var(--reviews)}.d-cms{--c:var(--cms)}
+
+/* top bar */
+#top{flex:none;display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--border);background:var(--surface)}
+#brand{font-weight:700;font-size:15px;letter-spacing:-.2px;white-space:nowrap}
+#brand b{color:var(--brand);font-weight:700}
+#stats{font-size:11.5px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#searchbox{position:relative;margin-left:auto;width:300px;flex:none}
+#search{width:100%;padding:7px 34px 7px 11px;border-radius:8px;border:1px solid var(--border2);background:var(--surface2);font-size:12.5px}
+#search::placeholder{color:var(--faint)}
+#search:focus{border-color:var(--brand)}
+#searchbox kbd{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:var(--dim);border:1px solid var(--border2);border-radius:4px;padding:0 5px}
+#results{position:absolute;top:calc(100% + 6px);left:0;right:0;max-height:60vh;overflow:auto;background:var(--surface);border:1px solid var(--border2);border-radius:10px;box-shadow:var(--shadow);z-index:300;display:none;padding:4px}
+#results.open{display:block}
+.res{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;padding:6px 8px;border-radius:6px;font-family:var(--mono);font-size:11.5px}
+.res.cur,.res:hover{background:var(--surface3)}
+.res .k{font-family:var(--sans);font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);width:46px;flex:none}
+.res .t{color:var(--c)}
+.res .s{color:var(--dim);margin-left:auto;font-size:10.5px;white-space:nowrap}
+.res mark{background:none;color:var(--brand);font-weight:600}
+.res-empty{padding:10px;color:var(--dim);font-size:12px}
+.tools{display:flex;gap:4px;flex:none}
+.tb{height:30px;min-width:30px;padding:0 9px;border-radius:7px;border:1px solid var(--border2);background:var(--surface2);font-size:12px;color:var(--dim)}
+.tb:hover{color:var(--text);border-color:var(--dim)}
+.tb.on{color:var(--brand);border-color:var(--brand)}
+
+/* filter + scenario bar */
+#bar{flex:none;display:flex;align-items:center;gap:6px;padding:7px 16px;border-bottom:1px solid var(--border);background:var(--surface);overflow-x:auto}
+#bar .lbl{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--dim);margin-right:2px;white-space:nowrap}
+.chip{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:13px;border:1px solid var(--border2);font-size:11.5px;color:var(--dim);white-space:nowrap;flex:none}
+.chip i{width:8px;height:8px;border-radius:2px;background:var(--c)}
+.chip .num{font-size:10px;color:var(--faint)}
+.chip:hover{color:var(--text)}
+.chip.on{color:var(--c);border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
+.chip.on .num{color:var(--c)}
+#bar .sep{width:1px;height:20px;background:var(--border2);margin:0 8px;flex:none}
+.scn-btn{height:26px;padding:0 11px;border-radius:7px;border:1px solid var(--border2);font-size:11.5px;color:var(--dim);white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:6px}
+.scn-btn::before{content:'';width:0;height:0;border-left:6px solid currentColor;border-top:4px solid transparent;border-bottom:4px solid transparent}
+.scn-btn:hover{color:var(--text)}
+.scn-btn.on{color:var(--c);border-color:var(--c);background:color-mix(in srgb,var(--c) 12%,transparent)}
+
+/* main */
+#main{flex:1;display:flex;min-height:0}
+#wrap{flex:1;min-width:0;overflow:auto;position:relative}
+#sizer{position:relative}
+#canvas{position:absolute;left:0;top:0;transform-origin:0 0}
+#edges{position:absolute;left:0;top:0;pointer-events:none;z-index:30;overflow:visible}
+.block{position:absolute;border-radius:12px;border:1px solid color-mix(in srgb,var(--c) 22%,transparent);background:color-mix(in srgb,var(--c) 4%,transparent)}
+.block h2{position:absolute;left:14px;top:9px;font-size:11px;font-weight:600;letter-spacing:.3px;color:var(--c);white-space:nowrap}
+.block h2 span{color:var(--dim);font-weight:400;margin-left:6px}
+.card{position:absolute;width:184px;height:64px;padding:8px 10px 8px 13px;text-align:left;border-radius:8px;border:1px solid var(--border);background:var(--surface);z-index:10;display:flex;flex-direction:column;justify-content:space-between;transition:opacity .2s,border-color .15s,box-shadow .2s}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:8px 0 0 8px;background:var(--c)}
+.card .nm{font-family:var(--mono);font-size:11px;font-weight:600;line-height:1.25;color:var(--text)}
+.card .meta{display:flex;gap:9px;font-size:10px;color:var(--dim);font-family:var(--mono)}
+.card .meta b{font-weight:500;color:var(--num)}
+.card:hover{border-color:var(--c);background:var(--surface2)}
+.card.nb{border-color:color-mix(in srgb,var(--c) 70%,transparent)}
+.card.sel{border-color:var(--c);box-shadow:0 0 0 1px var(--c),0 0 22px -4px var(--c);background:var(--surface2);z-index:20}
+.card.off{opacity:.14}
+#canvas.focus .card:not(.sel):not(.nb){opacity:.22}
+#canvas.scn .card:not(.now):not(.past){opacity:.22}
+
+.card .tag{position:absolute;top:-8px;right:8px;height:16px;padding:0 7px;line-height:14px;border-radius:8px;font-family:var(--sans);font-size:9.5px;font-weight:600;border:1px solid var(--c);color:var(--c);background:var(--surface)}
+.card .tag:empty{display:none}
+
+/* view bar */
+[hidden]{display:none!important}
+#viewbar{position:sticky;top:0;left:0;z-index:50;display:flex;align-items:center;gap:14px;min-height:46px;padding:8px 16px;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--border)}
+.segc{display:flex;flex:none;border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+.segc button{padding:5px 12px;font-size:12px;color:var(--dim)}
+.segc button:hover{color:var(--text)}
+.segc button.on{background:var(--surface3);color:var(--text)}
+#vb-info{display:flex;align-items:center;flex-wrap:wrap;gap:6px 16px;min-width:0;font-size:11.5px;color:var(--dim)}
+#vb-info b{font-family:var(--mono);font-weight:600;color:var(--text)}
+.lg{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.lg svg{color:var(--text)}
+body:not([data-view=map]) #zoom-in,body:not([data-view=map]) #zoom-out,body:not([data-view=map]) #zoom-fit{display:none}
+#reopen{margin-left:auto;flex:none}
+
+/* ER diagrams (relationships view and scenario lanes) */
+.er{position:relative;display:flex;align-items:flex-start;gap:120px;width:max-content;min-width:100%;padding:20px 24px 48px}
+.er svg.links{position:absolute;left:0;top:0;z-index:3;pointer-events:none;overflow:visible}
+.col{display:flex;flex-direction:column;gap:10px}
+.col-h{height:22px;line-height:22px;overflow:hidden;font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--dim);white-space:nowrap}
+.pin{position:sticky;top:66px;z-index:2;display:flex;align-items:flex-start;align-self:flex-start;gap:120px}
+.col.mid .ec{width:290px;box-shadow:0 0 0 1px var(--c),0 0 26px -6px var(--c)}
+.ec{display:block;width:240px;padding:0;text-align:left;border:1px solid color-mix(in srgb,var(--c) 45%,var(--border));border-radius:8px;background:var(--surface);overflow:hidden;transition:opacity .15s,border-color .15s}
+.ec:hover{border-color:var(--c)}
+.ec.ghost{border-style:dashed}
+.ec-h{display:flex;align-items:center;gap:8px;padding:7px 10px;border-left:3px solid var(--c);background:color-mix(in srgb,var(--c) 9%,var(--surface))}
+.ec-n{font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--c);overflow-wrap:anywhere}
+.ec-h .b,.ec-h .op{margin-left:auto;flex:none}
+.er-r{display:flex;align-items:center;gap:8px;height:26px;padding:0 10px 0 13px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;white-space:nowrap}
+.er-r .rn{color:var(--text)}
+.er-r.pk .rn{color:var(--brand)}
+.er-r .rty{margin-left:auto;font-size:10px;color:var(--type)}
+.er-r .b{margin-left:auto;flex:none}
+.er-r .rv{margin-left:auto;padding:0 7px;border-radius:4px;font-weight:600;color:var(--bg);background:var(--sc)}
+.er-r.lk-row .rn{font-family:var(--sans);color:var(--dim)}
+.ec-f{padding:6px 10px 6px 13px;border-top:1px solid var(--border);font-size:10.5px;color:var(--dim)}
+.empty{width:240px;padding:14px;border:1px dashed var(--border2);border-radius:8px;font-size:12px;line-height:1.5;color:var(--dim)}
+.lk{fill:none;stroke-width:1.5;stroke-linecap:round;transition:opacity .15s}
+.lk.opt .m{stroke-dasharray:5 4}
+.lk.lookup .m{stroke-dasharray:2 5}
+.er.hov .lk{opacity:.1}
+.er.hov .lk.hl{opacity:1;stroke-width:2.4}
+.er.hov .lk.trunk{opacity:.45}
+.lk .dot{stroke:none}
+.er.hov .ec{opacity:.4}
+.er.hov .ec.hl{opacity:1}
+
+/* scenario lanes */
+#scnview{padding:4px 16px 48px;--sc:var(--brand)}
+.lane{width:max-content;min-width:100%;margin-top:12px;border:1px solid var(--border);border-radius:12px;background:color-mix(in srgb,var(--surface) 55%,transparent);opacity:.45;cursor:pointer;transition:opacity .2s,border-color .2s}
+.lane:hover{opacity:.8}
+.lane.cur{opacity:1;border-color:var(--sc)}
+.lane header{display:flex;align-items:center;gap:8px;padding:11px 14px 0}
+.lane .sn{flex:none;width:20px;height:20px;border-radius:10px;border:1px solid var(--sc);color:var(--sc);font-family:var(--mono);font-size:10.5px;font-weight:600;line-height:18px;text-align:center}
+.lane.cur .sn{background:var(--sc);color:var(--bg)}
+.lane .st{font-size:12.5px;font-weight:600}
+.lane header .op{margin-left:0}
+.lane .er{align-items:center;min-width:0;padding:14px 24px 18px}
+
+/* domain matrix */
+.mx{display:grid;grid-template-columns:86px repeat(12,1fr);gap:2px;font-size:10.5px}
+.mx .ch{height:74px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px}
+.mx .ch span{writing-mode:vertical-rl;transform:rotate(180deg);color:var(--c);white-space:nowrap}
+.mx .rh{display:flex;align-items:center;color:var(--c);white-space:nowrap;overflow:hidden}
+.mx .cell{height:24px;display:flex;align-items:center;justify-content:center;border-radius:4px;font-family:var(--mono);font-size:10.5px;color:var(--text);background:color-mix(in srgb,var(--c) calc(var(--k) * 1%),var(--surface))}
+.mx .cell.z{color:transparent;background:var(--surface)}
+.mx .cell.dg{outline:1px solid var(--border2);outline-offset:-1px}
+.mx-cap{margin-top:8px;font-size:11px;line-height:1.5;color:var(--dim)}
+
+/* side panel */
+#panel{flex:none;width:420px;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;min-height:0}
+#panel.closed{display:none}
+#tabs{flex:none;display:flex;gap:2px;padding:8px 10px 0;border-bottom:1px solid var(--border)}
+.tab{padding:7px 12px;font-size:12px;color:var(--dim);border-radius:7px 7px 0 0;border:1px solid transparent;border-bottom:0;margin-bottom:-1px}
+.tab:disabled{opacity:.35;cursor:default}
+.tab.on{color:var(--text);background:var(--bg);border-color:var(--border)}
+#tabs .x{margin-left:auto;color:var(--dim);font-size:15px;padding:4px 8px}
+#tabs .x:hover{color:var(--text)}
+#pbody{position:relative;flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 16px 28px;background:var(--bg)}
+#reopen{display:none}
+#reopen.show{display:block}
+.ph{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--c);overflow-wrap:anywhere}
+.psub{font-size:11.5px;color:var(--dim);margin-top:3px}
+.psub .tag{display:inline-block;padding:0 6px;border-radius:4px;border:1px solid var(--border2);font-family:var(--mono);font-size:10px;margin-right:6px}
+.note{margin-top:12px;font-size:12.5px;line-height:1.55;color:var(--text);padding:10px 12px;border-radius:8px;background:var(--surface);border-left:3px solid var(--c)}
+h3{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--dim);margin:20px 0 8px;display:flex;align-items:center;gap:8px}
+h3 .num{font-size:10.5px}
+h3 input{margin-left:auto;width:130px;padding:3px 8px;border-radius:6px;border:1px solid var(--border2);background:var(--surface);font-size:11px;text-transform:none;letter-spacing:0;font-weight:400}
+.f{padding:6px 8px;border-radius:6px;border:1px solid transparent}
+.f + .f{border-top-color:var(--border)}
+.f.flash{background:color-mix(in srgb,var(--brand) 16%,transparent);border-color:var(--brand)}
+.f .l1{display:flex;align-items:baseline;gap:8px;font-family:var(--mono)}
+.f .fn{font-size:12px;font-weight:500;color:var(--text);overflow-wrap:anywhere}
+.f.pk .fn{color:var(--brand)}
+.f.fk .fn{color:var(--c)}
+.f .ft{margin-left:auto;font-size:11px;color:var(--type);text-align:right;overflow-wrap:anywhere}
+.f .ft.en{color:var(--enum)}
+.f .l2{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.b{display:inline-flex;align-items:center;height:17px;padding:0 6px;border-radius:4px;font-family:var(--mono);font-size:9.5px;border:1px solid var(--border2);color:var(--dim);white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.b.pk{color:var(--brand);border-color:var(--brand)}
+.b.uq{color:var(--cert);border-color:var(--cert)}
+.b.nn{color:var(--text)}
+.b.nul{color:var(--faint);border-style:dashed}
+.b.def{color:var(--num)}
+.b.del{color:var(--danger);border-color:color-mix(in srgb,var(--danger) 55%,transparent)}
+button.b.to{color:var(--c);border-color:var(--c);background:color-mix(in srgb,var(--c) 10%,transparent)}
+button.b.to:hover{background:color-mix(in srgb,var(--c) 24%,transparent)}
+.en-row{margin-bottom:10px}
+.en-name{font-family:var(--mono);font-size:11.5px;color:var(--enum)}
+.en-use{font-size:10.5px;color:var(--dim);margin-left:6px}
+.ev{display:inline-block;margin:4px 4px 0 0;padding:1px 7px;border-radius:4px;background:var(--surface);border:1px solid var(--border2);font-family:var(--mono);font-size:10.5px;color:var(--text)}
+.ev.cur{background:var(--sc);border-color:var(--sc);color:var(--bg);font-weight:600}
+.ix{display:flex;flex-wrap:wrap;align-items:center;gap:5px;padding:4px 0;font-family:var(--mono);font-size:11px;overflow-wrap:anywhere}
+.rel{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:5px 8px;border-radius:6px;font-family:var(--mono);font-size:11.5px}
+.rel:hover{background:var(--surface2)}
+.rel i{width:8px;height:8px;border-radius:2px;background:var(--c);flex:none}
+.rel .rt{color:var(--c)}
+.rel .rc{color:var(--dim);margin-left:auto;font-size:10.5px;text-align:right;overflow-wrap:anywhere}
+.hint{font-size:12px;color:var(--dim);line-height:1.6}
+.hint kbd{font-family:var(--mono);font-size:10.5px;border:1px solid var(--border2);border-radius:4px;padding:0 5px;color:var(--text)}
+.tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
+.tile{padding:10px 8px;border-radius:8px;background:var(--surface);border:1px solid var(--border);text-align:center}
+.tile b{display:block;font-family:var(--mono);font-size:19px;font-weight:600;color:var(--num)}
+.tile span{font-size:10.5px;color:var(--dim)}
+.bar{display:grid;grid-template-columns:170px 1fr 30px;align-items:center;gap:8px;width:100%;padding:4px 6px;border-radius:6px;font-family:var(--mono);font-size:11.5px;text-align:left}
+.bar:hover{background:var(--surface2)}
+.bar .bn{color:var(--c);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .bt{height:8px;border-radius:4px;background:var(--surface2)}
+.bar .bt i{display:block;height:100%;border-radius:4px;background:var(--c)}
+.bar .num{text-align:right;font-size:11px}
+
+/* scenario panel */
+#ctl{position:sticky;top:-14px;z-index:5;background:var(--bg);margin:-14px -16px 0;padding:14px 16px 10px;border-bottom:1px solid var(--border)}
+.ctl-row{display:flex;align-items:center;gap:6px}
+.ctl-title{font-size:14px;font-weight:600;color:var(--sc);margin-bottom:10px}
+.cb{height:30px;padding:0 11px;border-radius:7px;border:1px solid var(--border2);background:var(--surface);font-size:12px;color:var(--text)}
+.cb:hover:not(:disabled){border-color:var(--sc)}
+.cb:disabled{opacity:.35;cursor:default}
+.cb.play{border-color:var(--sc);color:var(--sc);min-width:74px}
+.ctl-count{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--dim)}
+.ctl-count b{color:var(--num);font-weight:600}
+.seg{display:flex;gap:4px;margin-top:10px}
+.seg button{flex:1;height:6px;border-radius:3px;background:var(--surface3)}
+.seg button.done{background:color-mix(in srgb,var(--sc) 45%,transparent)}
+.seg button.cur{background:var(--sc)}
+#state{margin-top:10px;min-height:54px;font-size:11.5px;color:var(--dim)}
+#state .sl{font-family:var(--mono);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#state .sl b{color:var(--sc);font-weight:500}
+.step{margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid var(--border);background:var(--surface);opacity:.55;cursor:pointer;transition:opacity .2s,border-color .2s}
+.step:hover{opacity:.85}
+.step.cur{opacity:1;border-color:var(--sc)}
+.step .sh{display:flex;align-items:center;gap:8px}
+.step .sn{flex:none;width:20px;height:20px;border-radius:10px;border:1px solid var(--sc);color:var(--sc);font-family:var(--mono);font-size:10.5px;font-weight:600;line-height:18px;text-align:center}
+.step.cur .sn{background:var(--sc);color:var(--bg)}
+.step .st{font-size:12.5px;font-weight:600}
+.op{margin-left:auto;flex:none;font-family:var(--mono);font-size:9.5px;font-weight:600;padding:1px 6px;border-radius:4px;border:1px solid currentColor}
+.op.READ{color:var(--people)}.op.INSERT{color:var(--course)}.op.UPDATE{color:var(--delivery)}
+.step .tabs2{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.tc{font-family:var(--mono);font-size:10px;padding:1px 6px;border-radius:4px;border:1px solid color-mix(in srgb,var(--c) 60%,transparent);color:var(--c)}
+.tc.w{background:color-mix(in srgb,var(--c) 16%,transparent)}
+.sql{margin-top:8px;padding:9px 10px;border-radius:7px;background:var(--bg);border:1px solid var(--border);font-family:var(--mono);font-size:11px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere;color:var(--text)}
+.sql .kw{color:var(--sql-kw);font-weight:500}.sql .tbl{color:var(--sql-tbl)}.sql .val{color:var(--sql-val)}
+.sn-note{margin-top:7px;padding:6px 9px;font-size:11.5px;line-height:1.5;color:var(--text);border-left:2px solid var(--sc);background:color-mix(in srgb,var(--sc) 7%,transparent);border-radius:0 6px 6px 0}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px;font-size:10.5px;color:var(--dim)}
+.legend svg{vertical-align:middle;margin-right:4px}
+
+@media (max-width:900px){
+  #main{flex-direction:column}
+  #panel{width:auto;height:46%;border-left:0;border-top:1px solid var(--border)}
+  #stats{display:none}
+  #searchbox{width:auto;flex:1}
+}
+</style>
+</head>
+<body>
+
+<header id="top">
+  <div id="brand"><b>Abethu</b> LMS data architecture</div>
+  <div id="stats"></div>
+  <div id="searchbox">
+    <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="Search tables, columns, enum values" aria-label="Search schema">
+    <kbd>/</kbd>
+    <div id="results" role="listbox"></div>
+  </div>
+  <div class="tools">
+    <button class="tb" id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+    <button class="tb" id="zoom-fit" title="Fit the whole schema in view">Fit</button>
+    <button class="tb" id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+    <button class="tb" id="theme" title="Switch light and dark theme">Light</button>
+  </div>
+</header>
+
+<nav id="bar">
+  <span class="lbl">Domains</span>
+  <span id="chips" style="display:contents"></span>
+  <span class="sep"></span>
+  <span class="lbl">Scenarios</span>
+  <span id="scns" style="display:contents"></span>
+</nav>
+
+<div id="main">
+  <div id="wrap">
+    <div id="viewbar">
+      <div class="segc"><button data-view="map">Map</button><button data-view="rel">Relationships</button></div>
+      <div id="vb-info"></div>
+      <button class="tb" id="reopen">Show panel</button>
+    </div>
+    <div id="mapview"><div id="sizer"><div id="canvas"></div></div></div>
+    <div id="relview" hidden></div>
+    <div id="scnview" hidden></div>
+  </div>
+  <aside id="panel">
+    <div id="tabs">
+      <button class="tab on" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="table" disabled>Table</button>
+      <button class="tab" data-tab="scenario" disabled>Scenario</button>
+      <button class="x" id="pclose" title="Hide panel" aria-label="Hide panel">×</button>
+    </div>
+    <div id="pbody"></div>
+  </aside>
+</div>
+
+<script>
+const ENTITIES = {
+
+  // ── ORGANISATIONAL ──
+  "organisation": {
+    x:20, y:62, domain:'org',
+    note: 'Single-row company profile for ASD (Abethu Skills Development), rendered onto quotes, invoices and certificates. Also carries platform policy knobs: expense-approval threshold, flat commission amount, commission window.',
+    enums: [],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'city', type:'text', constraint:'NOT NULL' },
+      { name:'address', type:'text', constraint:'NOT NULL' },
+      { name:'phone', type:'text', constraint:'nullable' },
+      { name:'email', type:'text', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'expense_approval_threshold', type:'numeric(12,2)', constraint:'NOT NULL, default 1000.00' },
+      { name:'commission_flat_amount', type:'numeric(12,2)', constraint:'NOT NULL, default 250.00' },
+      { name:'commission_window_days', type:'integer', constraint:'NOT NULL, default 60' },
+    ],
+    relations: [],
+  },
+  "companies": {
+    x:200, y:62, domain:'org',
+    note: 'Corporate clients booking training for employees. site_address + has_own_machines drive on-site delivery logistics. Soft-deactivation only — hard deletes trigger-forbidden (v4.14). search_tsv for full-text.',
+    enums: [],
+    indexes: ['search_tsv (GIN)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'registration_number', type:'text', constraint:'nullable' },
+      { name:'address', type:'text', constraint:'nullable' },
+      { name:'site_address', type:'text', constraint:'nullable' },
+      { name:'telephone', type:'text', constraint:'nullable' },
+      { name:'cell', type:'text', constraint:'nullable' },
+      { name:'email', type:'text', constraint:'nullable' },
+      { name:'has_own_machines', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'search_tsv', type:'tsvector', constraint:'nullable, default ((setweight(to_tsvector(\'simple…' },
+      { name:'deactivated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deactivated_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'deactivation_reason', type:'text', constraint:'nullable' },
+    ],
+    relations: ['users', 'cohorts', 'company_contacts', 'company_feedback', 'corporate_enrollment_consents', 'credit_notes', 'enrollments', 'inquiries', 'invoices', 'locations', 'quotes', 'reviews', 'threads'],
+  },
+  "company_contacts": {
+    x:380, y:62, domain:'org',
+    note: 'Named contacts at a client company. is_primary flags the quote/invoice recipient; WhatsApp opt-in and POPIA redaction timestamped.',
+    enums: [],
+    indexes: ['search_tsv (GIN)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'NOT NULL → companies' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'role', type:'text', constraint:'nullable' },
+      { name:'phone', type:'text', constraint:'nullable' },
+      { name:'email', type:'text', constraint:'nullable' },
+      { name:'is_primary', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'whatsapp_opt_in_at', type:'timestamptz', constraint:'nullable' },
+      { name:'search_tsv', type:'tsvector', constraint:'nullable, default ((setweight(to_tsvector(\'simple…' },
+      { name:'subject_redacted_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['companies'],
+  },
+  "machine_training_providers": {
+    x:560, y:62, domain:'org',
+    note: 'Partner organisations hired when ASD lacks a machine. Paid per booking via provider_rate_cards; settlement flows guarded (v4.6).',
+    enums: [],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'contact_name', type:'text', constraint:'nullable' },
+      { name:'phone', type:'text', constraint:'nullable' },
+      { name:'email', type:'text', constraint:'nullable' },
+      { name:'bank_name', type:'text', constraint:'nullable' },
+      { name:'bank_account_no', type:'text', constraint:'nullable' },
+      { name:'bank_branch_code', type:'text', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'deactivated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deactivated_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'deactivation_reason', type:'text', constraint:'nullable' },
+    ],
+    relations: ['users', 'accruals', 'locations', 'provider_bookings', 'provider_rate_cards', 'threads'],
+  },
+  "corporate_trainers": {
+    x:740, y:62, domain:'org',
+    note: 'External contractor trainers engaged for corporate deliveries. Paid via corporate_trainer_rate_cards; one-contractor-per-cohort guards apply (v4.5).',
+    enums: [],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'full_name', type:'text', constraint:'NOT NULL' },
+      { name:'phone', type:'text', constraint:'nullable' },
+      { name:'email', type:'text', constraint:'nullable' },
+      { name:'bank_name', type:'text', constraint:'nullable' },
+      { name:'bank_account_no', type:'text', constraint:'nullable' },
+      { name:'bank_branch_code', type:'text', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'deactivated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deactivated_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'deactivation_reason', type:'text', constraint:'nullable' },
+      { name:'subject_redacted_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['users', 'accruals', 'corporate_trainer_rate_cards', 'threads'],
+  },
+
+  // ── PEOPLE & AUTH ──
+  "users": {
+    x:20, y:210, domain:'people',
+    note: 'Single auth table across all eight roles (Better-Auth, ADR-002). Account-status lifecycle, lockout counters and POPIA redaction stamp live here; role profiles in satellite tables.',
+    enums: [{ name:'user_role', vals:['OWNER','MANAGER','ADMIN','INTERNAL_TRAINER','STUDENT','COMPANY_REP','MACHINE_TRAINING_PROVIDER','CORPORATE_TRAINER'] }],
+    indexes: ['email (UNIQUE B-tree)', 'company_id (B-tree partial)', 'machine_training_provider_id (B-tree partial)', 'corporate_trainer_id (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'email', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'phone', type:'text', constraint:'nullable' },
+      { name:'password_hash', type:'text', constraint:'nullable' },
+      { name:'role', type:'user_role', constraint:'NOT NULL, enum' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'last_login_at', type:'timestamptz', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+      { name:'account_status', type:'text', constraint:'NOT NULL, default \'PENDING_INVITE\'' },
+      { name:'account_status_changed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'account_status_changed_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'account_status_change_reason', type:'text', constraint:'nullable' },
+      { name:'failed_login_count', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'failed_login_window_at', type:'timestamptz', constraint:'nullable' },
+      { name:'locked_until', type:'timestamptz', constraint:'nullable' },
+      { name:'subject_redacted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'machine_training_provider_id', type:'uuid', fk:true, constraint:'nullable → machine_training_providers' },
+      { name:'corporate_trainer_id', type:'uuid', fk:true, constraint:'nullable → corporate_trainers' },
+    ],
+    relations: ['companies', 'corporate_trainers', 'machine_training_providers', 'accreditation_bodies', 'assessment_evidence', 'assessment_results', 'assessment_schemas', 'attendance', 'audit_log', 'bulk_operations', 'cash_deposits', 'cash_reconciliations', 'categories', 'certificates', 'co_owner_grants', 'cohorts', 'commissions', 'company_feedback', 'corporate_enrollment_consents', 'credit_notes', 'data_subject_redactions', 'document_voids', 'edit_requests', 'enrollment_status_history', 'inquiries', 'intake_captures', 'invoices', 'moderation_audits', 'notification_preferences', 'notifications', 'outgoings', 'payments', 'provider_bookings', 'quotes', 'reviews', 'student_identity_documents', 'students', 'thread_messages', 'threads', 'trainers', 'trusted_devices', 'user_2fa', 'user_2fa_backup_codes', 'user_invitations'],
+  },
+  "user_invitations": {
+    x:200, y:210, domain:'people',
+    note: 'Token-based provisioning of new accounts — inviter, granted role, expiry, acceptance.',
+    enums: [],
+    indexes: ['token_hash (UNIQUE B-tree)', 'user_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'token_hash', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'invited_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'invited_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'expires_at', type:'timestamptz', constraint:'NOT NULL' },
+      { name:'consumed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'voided_at', type:'timestamptz', constraint:'nullable' },
+      { name:'voided_reason', type:'text', constraint:'nullable' },
+    ],
+    relations: ['users'],
+  },
+  "user_2fa": {
+    x:380, y:210, domain:'people',
+    note: 'TOTP second-factor enrolment per user.',
+    enums: [],
+    indexes: [],
+    fields: [
+      { name:'user_id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'secret_encrypted', type:'bytea', constraint:'NOT NULL' },
+      { name:'enabled_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'last_used_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['users'],
+  },
+  "user_2fa_backup_codes": {
+    x:560, y:210, domain:'people',
+    note: 'Hashed one-time backup codes for 2FA recovery.',
+    enums: [],
+    indexes: ['user_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'code_hash', type:'text', constraint:'NOT NULL' },
+      { name:'consumed_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['users'],
+  },
+  "trusted_devices": {
+    x:740, y:210, domain:'people',
+    note: 'Remembered devices that skip 2FA until expiry; revocable per device.',
+    enums: [],
+    indexes: ['user_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'device_token_hash', type:'text', constraint:'NOT NULL' },
+      { name:'user_agent', type:'text', constraint:'nullable' },
+      { name:'first_seen_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'last_seen_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'expires_at', type:'timestamptz', constraint:'NOT NULL' },
+      { name:'revoked_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['users'],
+  },
+  "co_owner_grants": {
+    x:920, y:210, domain:'people',
+    note: 'Owner-level authority delegation with explicit grant/revoke trail — supplies the authority_basis cited on privileged audit_log rows.',
+    enums: [],
+    indexes: ['granted_by_user_id (B-tree)', 'granted_to_user_id (B-tree partial)', '(true) (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'granted_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'granted_to_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'granted_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'revoked_at', type:'timestamptz', constraint:'nullable' },
+      { name:'revoked_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'revoke_reason', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['users'],
+  },
+  "students": {
+    x:1100, y:210, domain:'people',
+    note: 'Learner profile satellite of users. Student number, demographics, language, photo. Soft-deactivation + POPIA subject-redaction stamps; search_tsv for full-text search (v4.12).',
+    enums: [{ name:'language_code', vals:['EN','ZU','XH'] }],
+    indexes: ['student_number (UNIQUE B-tree)', 'user_id (UNIQUE B-tree)', 'student_number (B-tree)', 'search_tsv (GIN)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'user_id', type:'uuid', fk:true, constraint:'UNIQUE, NOT NULL → users' },
+      { name:'student_number', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'first_name', type:'text', constraint:'NOT NULL' },
+      { name:'last_name', type:'text', constraint:'NOT NULL' },
+      { name:'date_of_birth', type:'date', constraint:'nullable' },
+      { name:'gender', type:'text', constraint:'nullable' },
+      { name:'phone', type:'text', constraint:'NOT NULL' },
+      { name:'email', type:'text', constraint:'nullable' },
+      { name:'nationality', type:'text', constraint:'NOT NULL, default \'South Africa\'' },
+      { name:'home_region', type:'text', constraint:'nullable' },
+      { name:'preferred_language', type:'language_code', constraint:'NOT NULL, default \'EN\', enum' },
+      { name:'photo_url', type:'text', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'whatsapp_opt_in_at', type:'timestamptz', constraint:'nullable' },
+      { name:'search_tsv', type:'tsvector', constraint:'nullable, default ((setweight(to_tsvector(\'simple…' },
+      { name:'deactivated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deactivated_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'deactivation_reason', type:'text', constraint:'nullable' },
+      { name:'subject_redacted_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['users', 'certificates', 'corporate_enrollment_consents', 'enrollments', 'intake_captures', 'invoices', 'quotes', 'student_identity_documents'],
+  },
+  "student_identity_documents": {
+    x:1280, y:210, domain:'people',
+    note: 'ID/passport documents captured for licensing — file URL plus verification trail.',
+    enums: [{ name:'identity_document_type', vals:['SA_ID','PASSPORT','ASYLUM_SEEKER'] }],
+    indexes: ['student_id, document_type (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'student_id', type:'uuid', fk:true, constraint:'NOT NULL → students' },
+      { name:'document_type', type:'identity_document_type', constraint:'NOT NULL, enum' },
+      { name:'document_number', type:'text', constraint:'NOT NULL' },
+      { name:'issuing_country', type:'text', constraint:'nullable' },
+      { name:'expiry_date', type:'date', constraint:'nullable' },
+      { name:'verified', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'verified_at', type:'timestamptz', constraint:'nullable' },
+      { name:'verified_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'subject_redacted_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['students', 'users'],
+  },
+  "trainers": {
+    x:1460, y:210, domain:'people',
+    note: 'Uniform internal teaching spine (ADR-009; reshaped from facilitators, v4.2.1). INTERNAL_TRAINER staff who deliver lessons; fn_trainer_pool_guard keeps external kinds out.',
+    enums: [],
+    indexes: ['trainer_ref (UNIQUE B-tree)', 'user_id (UNIQUE B-tree)', 'search_tsv (GIN)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'user_id', type:'uuid', fk:true, constraint:'UNIQUE, NOT NULL → users' },
+      { name:'trainer_ref', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'first_name', type:'text', constraint:'NOT NULL' },
+      { name:'last_name', type:'text', constraint:'NOT NULL' },
+      { name:'phone', type:'text', constraint:'NOT NULL' },
+      { name:'hire_date', type:'date', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'search_tsv', type:'tsvector', constraint:'nullable, default (setweight(to_tsvector(\'simple\'…' },
+      { name:'deactivated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deactivated_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'deactivation_reason', type:'text', constraint:'nullable' },
+      { name:'subject_redacted_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['users', 'assessment_results', 'cohort_trainers', 'cohorts', 'corporate_training_checklists', 'lessons', 'reviews', 'trainer_clock_ins', 'trainer_lesson_presence', 'trainer_registrations'],
+  },
+  "trainer_registrations": {
+    x:20, y:304, domain:'people',
+    note: 'Accreditation-body registrations held by a trainer (e.g. TETA assessor numbers). Registration number prints on certificates; expiry drives vw_renewal_due alerts.',
+    enums: [],
+    indexes: ['trainer_id, accreditation_body_id (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'trainer_id', type:'uuid', fk:true, constraint:'NOT NULL → trainers' },
+      { name:'accreditation_body_id', type:'uuid', fk:true, constraint:'NOT NULL → accreditation_bodies' },
+      { name:'registration_number', type:'text', constraint:'NOT NULL' },
+      { name:'registered_at', type:'date', constraint:'NOT NULL' },
+      { name:'expires_at', type:'date', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['accreditation_bodies', 'trainers'],
+  },
+  "trainer_clock_ins": {
+    x:200, y:304, domain:'people',
+    note: 'Mandatory daily clock-in for internal trainers (reinstated v4.2). Internal-only trigger guard; feeds vw_trainer_no_clockin.',
+    enums: [],
+    indexes: ['trainer_id, work_date (UNIQUE B-tree)', 'work_date (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'trainer_id', type:'uuid', fk:true, constraint:'NOT NULL → trainers' },
+      { name:'work_date', type:'date', constraint:'NOT NULL, default CURRENT_DATE' },
+      { name:'clocked_in_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'clocked_out_at', type:'timestamptz', constraint:'nullable' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['trainers'],
+  },
+
+  // ── COURSE CATALOGUE ──
+  "courses": {
+    x:20, y:452, domain:'course',
+    note: 'Machine-operator course catalogue. fn_forbid_delete parent guard (v4.14) — never hard-deleted; cms.course_marketing references this id cross-schema. search_tsv (v4.12).',
+    enums: [{ name:'cohort_schedule_pattern', vals:['WEEKLY','MONTHLY','ADHOC_CORPORATE'] }, { name:'assessment_timing', vals:['CONTINUOUS','FINAL'] }],
+    indexes: ['slug (UNIQUE B-tree)', 'category_id (B-tree)', 'slug (B-tree)', 'search_tsv (GIN)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'category_id', type:'uuid', fk:true, constraint:'NOT NULL → categories' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'slug', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'description', type:'text', constraint:'NOT NULL' },
+      { name:'saqa_id', type:'text', constraint:'nullable' },
+      { name:'nqf_level', type:'smallint', constraint:'nullable' },
+      { name:'credits', type:'smallint', constraint:'nullable' },
+      { name:'duration_days_min', type:'smallint', constraint:'nullable' },
+      { name:'duration_days_max', type:'smallint', constraint:'nullable' },
+      { name:'duration_display', type:'text', constraint:'nullable' },
+      { name:'schedule_pattern', type:'cohort_schedule_pattern', constraint:'NOT NULL, default \'MONTHLY\', enum' },
+      { name:'assessment_type', type:'assessment_timing', constraint:'NOT NULL, default \'FINAL\', enum' },
+      { name:'pass_mark_theory', type:'smallint', constraint:'NOT NULL, default 60' },
+      { name:'pass_mark_practical', type:'smallint', constraint:'NOT NULL, default 70' },
+      { name:'min_attendance_pct', type:'smallint', constraint:'NOT NULL, default 80' },
+      { name:'available_languages', type:'language_code[]', constraint:'NOT NULL, default \'{EN}\'' },
+      { name:'available_levels', type:'student_level[]', constraint:'NOT NULL, default \'{NOVICE,RENEWAL}\'' },
+      { name:'website_url', type:'text', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'has_rpl_path', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'validity_months', type:'smallint', constraint:'nullable' },
+      { name:'validity_source', type:'text', constraint:'nullable' },
+      { name:'is_refresher_for_course_id', type:'uuid', fk:true, constraint:'nullable → courses' },
+      { name:'search_tsv', type:'tsvector', constraint:'nullable, default ((setweight(to_tsvector(\'simple…' },
+    ],
+    relations: ['categories', 'assessment_schemas', 'certificate_templates', 'cms.course_marketing', 'cohorts', 'corporate_trainer_rate_cards', 'course_accreditations', 'course_prerequisites', 'course_pricing', 'inquiries', 'provider_bookings', 'provider_rate_cards', 'quote_line_items', 'reviews'],
+  },
+  "categories": {
+    x:200, y:452, domain:'course',
+    note: 'Course category taxonomy. Delete-forbidden parent like courses.',
+    enums: [],
+    indexes: ['code (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'code', type:'text', constraint:'NOT NULL' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'description', type:'text', constraint:'nullable' },
+      { name:'icon', type:'text', constraint:'nullable' },
+      { name:'sort_order', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'deleted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deleted_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+    ],
+    relations: ['users', 'cms.category_landing', 'courses'],
+  },
+  "course_pricing": {
+    x:380, y:452, domain:'course',
+    note: 'Effective-dated price list per course × training_mode × student_level. Money-in convention: integer (price_zar).',
+    enums: [{ name:'training_mode', vals:['FULL_TIME','PART_TIME','ON_SITE_CORPORATE'] }, { name:'student_level', vals:['NOVICE','NOVICE_WITH_EXPERIENCE','RENEWAL'] }],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'training_mode', type:'training_mode', constraint:'NOT NULL, enum' },
+      { name:'student_level', type:'student_level', constraint:'NOT NULL, enum' },
+      { name:'price_zar', type:'integer', constraint:'NOT NULL' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'effective_from', type:'date', constraint:'NOT NULL' },
+      { name:'effective_to', type:'date', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['courses'],
+  },
+  "course_prerequisites": {
+    x:560, y:452, domain:'course',
+    note: 'Self-referencing course → course prerequisite edges.',
+    enums: [],
+    indexes: ['course_id, prerequisite_course_id (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'prerequisite_course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'is_mandatory', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['courses'],
+  },
+  "course_accreditations": {
+    x:740, y:452, domain:'course',
+    note: 'Which accreditation bodies certify which courses.',
+    enums: [],
+    indexes: ['course_id, accreditation_body_id (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'accreditation_body_id', type:'uuid', fk:true, constraint:'NOT NULL → accreditation_bodies' },
+      { name:'accreditation_code', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['accreditation_bodies', 'courses'],
+  },
+  "accreditation_bodies": {
+    x:920, y:452, domain:'course',
+    note: 'TETA, CETA, MQA, SAIW, DOH, SAQA. Drives certificate branding and registration validity.',
+    enums: [],
+    indexes: ['code (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'code', type:'text', constraint:'NOT NULL' },
+      { name:'full_name', type:'text', constraint:'NOT NULL' },
+      { name:'website', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'deleted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deleted_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+    ],
+    relations: ['users', 'certificate_templates', 'course_accreditations', 'moderation_audits', 'trainer_registrations'],
+  },
+  "certificate_templates": {
+    x:1100, y:452, domain:'course',
+    note: 'Per-course certificate artwork, certification type and validity_months, bound to an accreditation body.',
+    enums: [{ name:'certification_type', vals:['OPERATOR_LICENCE','ACCREDITED_CERTIFICATE','CERTIFICATE_OF_COMPLETION'] }],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'certification_type', type:'certification_type', constraint:'NOT NULL, enum' },
+      { name:'template_file_url', type:'text', constraint:'NOT NULL' },
+      { name:'description', type:'text', constraint:'nullable' },
+      { name:'validity_months', type:'smallint', constraint:'nullable' },
+      { name:'accreditation_body_id', type:'uuid', fk:true, constraint:'nullable → accreditation_bodies' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['accreditation_bodies', 'courses', 'certificates'],
+  },
+  "feature_flags": {
+    x:1280, y:452, domain:'course',
+    note: 'Owner-audited system toggles (e.g. lesson-level trainer presence tracking).',
+    enums: [],
+    indexes: ['key (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'key', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'enabled', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'description', type:'text', constraint:'NOT NULL' },
+      { name:'enabled_at', type:'timestamptz', constraint:'nullable' },
+      { name:'disabled_at', type:'timestamptz', constraint:'nullable' },
+      { name:'toggled_by', type:'uuid', constraint:'NOT NULL' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: [],
+  },
+
+  // ── DELIVERY ──
+  "cohorts": {
+    x:20, y:600, domain:'delivery',
+    note: 'A scheduled run of a course — OPEN or COMPANY_HOSTED (cohort_type). Intake closure stamped by office staff (v4.4 guards); current_enrollment maintained by trigger.',
+    enums: [{ name:'cohort_schedule_pattern', vals:['WEEKLY','MONTHLY','ADHOC_CORPORATE'] }, { name:'training_mode', vals:['FULL_TIME','PART_TIME','ON_SITE_CORPORATE'] }, { name:'language_code', vals:['EN','ZU','XH'] }, { name:'student_level', vals:['NOVICE','NOVICE_WITH_EXPERIENCE','RENEWAL'] }, { name:'cohort_status', vals:['SCHEDULED','IN_PROGRESS','COMPLETED','CANCELLED'] }, { name:'cohort_type', vals:['OPEN','COMPANY_HOSTED'] }],
+    indexes: ['company_id (B-tree partial)', 'course_id (B-tree)', 'start_date, end_date (B-tree)', 'status (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'start_date', type:'date', constraint:'NOT NULL' },
+      { name:'end_date', type:'date', constraint:'NOT NULL' },
+      { name:'schedule_pattern', type:'cohort_schedule_pattern', constraint:'NOT NULL, enum' },
+      { name:'training_mode', type:'training_mode', constraint:'NOT NULL, default \'FULL_TIME\', enum' },
+      { name:'language', type:'language_code', constraint:'NOT NULL, default \'EN\', enum' },
+      { name:'student_level', type:'student_level', constraint:'NOT NULL, default \'NOVICE\', enum' },
+      { name:'max_capacity', type:'smallint', constraint:'NOT NULL, default 20' },
+      { name:'current_enrollment', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+      { name:'company_preferred_duration', type:'text', constraint:'nullable' },
+      { name:'primary_trainer_id', type:'uuid', fk:true, constraint:'NOT NULL → trainers' },
+      { name:'status', type:'cohort_status', constraint:'NOT NULL, default \'SCHEDULED\', enum' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'cohort_type', type:'cohort_type', constraint:'NOT NULL, default \'OPEN\', enum' },
+      { name:'intake_closed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'intake_closed_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+    ],
+    relations: ['companies', 'courses', 'trainers', 'users', 'accruals', 'cohort_trainers', 'company_feedback', 'corporate_training_checklists', 'enrollments', 'intake_captures', 'lessons', 'moderation_audits', 'outgoings', 'provider_bookings', 'reviews'],
+  },
+  "cohort_trainers": {
+    x:200, y:600, domain:'delivery',
+    note: 'Additional trainers assigned to a cohort beyond the primary.',
+    enums: [{ name:'cohort_trainer_role', vals:['PRIMARY','ASSISTANT','ASSESSOR'] }],
+    indexes: [],
+    fields: [
+      { name:'cohort_id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'trainer_id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'role', type:'cohort_trainer_role', constraint:'NOT NULL, default \'ASSISTANT\', enum' },
+    ],
+    relations: ['cohorts', 'trainers'],
+  },
+  "trainer_lesson_presence": {
+    x:380, y:600, domain:'delivery',
+    note: 'Per-lesson trainer presence, recorded when the lesson_level_teacher_tracking flag is enabled.',
+    enums: [],
+    indexes: ['lesson_id, trainer_id (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'lesson_id', type:'uuid', fk:true, constraint:'NOT NULL → lessons' },
+      { name:'trainer_id', type:'uuid', fk:true, constraint:'NOT NULL → trainers' },
+      { name:'arrived_at', type:'timestamptz', constraint:'nullable' },
+      { name:'departed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'was_late', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['lessons', 'trainers'],
+  },
+  "lessons": {
+    x:560, y:600, domain:'delivery',
+    note: 'Individual teaching sessions within a cohort — date, times, trainer, location, cancellation flag.',
+    enums: [{ name:'day_of_week', vals:['MON','TUE','WED','THU','FRI','SAT'] }],
+    indexes: ['cohort_id (B-tree)', 'date (B-tree)', 'location_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'NOT NULL → cohorts' },
+      { name:'trainer_id', type:'uuid', fk:true, constraint:'NOT NULL → trainers' },
+      { name:'date', type:'date', constraint:'NOT NULL' },
+      { name:'day_of_week', type:'day_of_week', constraint:'NOT NULL, enum' },
+      { name:'start_time', type:'time without time zone', constraint:'nullable' },
+      { name:'end_time', type:'time without time zone', constraint:'nullable' },
+      { name:'topic', type:'text', constraint:'nullable' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'is_cancelled', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'location_id', type:'uuid', fk:true, constraint:'nullable → locations' },
+    ],
+    relations: ['cohorts', 'locations', 'trainers', 'attendance', 'trainer_lesson_presence'],
+  },
+  "locations": {
+    x:740, y:600, domain:'delivery',
+    note: 'Physical training venues (Durban, Pietermaritzburg, Empangeni, client sites). Capacity feeds vw_location_capacity_alerts (v4.10).',
+    enums: [{ name:'location_owner_type', vals:['PROVIDER','COMPANY','ASD'] }],
+    indexes: ['company_id (B-tree partial)', 'provider_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'owner_type', type:'location_owner_type', constraint:'NOT NULL, enum' },
+      { name:'provider_id', type:'uuid', fk:true, constraint:'nullable → machine_training_providers' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+      { name:'label', type:'text', constraint:'NOT NULL' },
+      { name:'address', type:'text', constraint:'nullable' },
+      { name:'city', type:'text', constraint:'nullable' },
+      { name:'max_capacity', type:'integer', constraint:'nullable' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'retired_at', type:'timestamptz', constraint:'nullable' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['companies', 'machine_training_providers', 'enrollments', 'lessons', 'outgoings', 'provider_bookings'],
+  },
+  "enrollments": {
+    x:920, y:600, domain:'delivery',
+    note: 'A student\'s participation in a cohort. Status machine REGISTERED→…→COMPLETED; rolled-up attendance/theory/practical results; sponsor company, RPL and quote-line links; invoice link.',
+    enums: [{ name:'enrollment_status', vals:['REGISTERED','ACTIVE','COMPLETED','FAILED','WITHDRAWN','SUSPENDED'] }, { name:'student_level', vals:['NOVICE','NOVICE_WITH_EXPERIENCE','RENEWAL'] }, { name:'assessment_result', vals:['PASS','FAIL','PENDING'] }],
+    indexes: ['student_id, cohort_id (UNIQUE B-tree)', 'cohort_id (B-tree)', 'sponsor_company_id (B-tree partial)', 'status (B-tree)', 'student_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'student_id', type:'uuid', fk:true, constraint:'NOT NULL → students' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'NOT NULL → cohorts' },
+      { name:'status', type:'enrollment_status', constraint:'NOT NULL, default \'REGISTERED\', enum' },
+      { name:'enrolled_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'started_at', type:'timestamptz', constraint:'nullable' },
+      { name:'completed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'student_level', type:'student_level', constraint:'NOT NULL, enum' },
+      { name:'novice_has_basic_knowledge', type:'boolean', constraint:'nullable' },
+      { name:'attendance_pct', type:'numeric(5,2)', constraint:'nullable' },
+      { name:'theory_avg', type:'numeric(5,2)', constraint:'nullable' },
+      { name:'practical_avg', type:'numeric(5,2)', constraint:'nullable' },
+      { name:'overall_result', type:'assessment_result', constraint:'NOT NULL, default \'PENDING\', enum' },
+      { name:'invoice_id', type:'uuid', fk:true, constraint:'nullable → invoices' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'planned_location_id', type:'uuid', fk:true, constraint:'nullable → locations' },
+      { name:'is_rpl', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'rpl_assessor_notes', type:'text', constraint:'nullable' },
+      { name:'quote_line_item_id', type:'uuid', fk:true, constraint:'nullable → quote_line_items (ON DELETE SET NULL)' },
+      { name:'sponsor_company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+    ],
+    relations: ['cohorts', 'companies', 'invoices', 'locations', 'quote_line_items', 'students', 'assessment_evidence', 'assessment_results', 'attendance', 'certificates', 'company_feedback', 'corporate_enrollment_consents', 'enrollment_status_history', 'inquiries', 'invoice_line_items', 'reviews'],
+  },
+  "enrollment_status_history": {
+    x:1100, y:600, domain:'delivery',
+    note: 'Append-only status-transition trail per enrollment with actor and reason.',
+    enums: [{ name:'enrollment_status', vals:['REGISTERED','ACTIVE','COMPLETED','FAILED','WITHDRAWN','SUSPENDED'] }],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'NOT NULL → enrollments' },
+      { name:'from_status', type:'enrollment_status', constraint:'nullable, enum' },
+      { name:'to_status', type:'enrollment_status', constraint:'NOT NULL, enum' },
+      { name:'changed_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'reason', type:'text', constraint:'nullable' },
+      { name:'changed_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['enrollments', 'users'],
+  },
+  "provider_bookings": {
+    x:1280, y:600, domain:'delivery',
+    note: 'A machine-training-provider engagement against a cohort — the unit that accrues provider pay.',
+    enums: [{ name:'booking_status', vals:['REQUESTED','CONFIRMED','DECLINED','RESCHEDULED','CANCELLED','COMPLETED'] }],
+    indexes: ['cohort_id (B-tree)', 'provider_id, status (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'provider_id', type:'uuid', fk:true, constraint:'NOT NULL → machine_training_providers' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'NOT NULL → cohorts' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'location_id', type:'uuid', fk:true, constraint:'nullable → locations' },
+      { name:'start_date', type:'date', constraint:'NOT NULL' },
+      { name:'end_date', type:'date', constraint:'nullable' },
+      { name:'learner_count', type:'integer', constraint:'nullable' },
+      { name:'status', type:'booking_status', constraint:'NOT NULL, default \'REQUESTED\', enum' },
+      { name:'status_reason', type:'text', constraint:'nullable' },
+      { name:'thread_id', type:'uuid', fk:true, constraint:'nullable → threads' },
+      { name:'created_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['cohorts', 'courses', 'locations', 'machine_training_providers', 'threads', 'users'],
+  },
+  "intake_captures": {
+    x:1460, y:600, domain:'delivery',
+    note: 'Day-one intake staging (v4.4 / F8): raw learner capture rows awaiting office approval before becoming students + enrollments. Approver and intake-close office guards.',
+    enums: [{ name:'intake_origin', vals:['FIELD_DAY_ONE','ADVANCE_ADMIN'] }, { name:'intake_capture_status', vals:['PENDING','APPROVED','REJECTED'] }, { name:'identity_document_type', vals:['SA_ID','PASSPORT','ASYLUM_SEEKER'] }],
+    indexes: ['cohort_id, id_document_number (UNIQUE B-tree partial)', 'cohort_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'NOT NULL → cohorts' },
+      { name:'origin', type:'intake_origin', constraint:'NOT NULL, enum' },
+      { name:'status', type:'intake_capture_status', constraint:'NOT NULL, default \'PENDING\', enum' },
+      { name:'first_name', type:'text', constraint:'NOT NULL' },
+      { name:'last_name', type:'text', constraint:'NOT NULL' },
+      { name:'id_document_type', type:'identity_document_type', constraint:'NOT NULL, default \'SA_ID\', enum' },
+      { name:'id_document_number', type:'text', constraint:'NOT NULL' },
+      { name:'id_document_image_url', type:'text', constraint:'nullable' },
+      { name:'phone', type:'text', constraint:'NOT NULL' },
+      { name:'email', type:'text', constraint:'nullable' },
+      { name:'captured_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'reviewed_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'reviewed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'rejection_reason', type:'text', constraint:'nullable' },
+      { name:'resulting_student_id', type:'uuid', fk:true, constraint:'nullable → students' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['cohorts', 'students', 'users'],
+  },
+
+  // ── LEARNING RECORDS ──
+  "attendance": {
+    x:20, y:748, domain:'learning',
+    note: 'Per-lesson, per-enrollment attendance marks (renamed from lesson_attendance, v4.15). Locked shortly after capture; corrections go through edit_requests.',
+    enums: [{ name:'attendance_status', vals:['PRESENT','ABSENT','LATE','EXCUSED'] }],
+    indexes: ['lesson_id, enrollment_id (UNIQUE B-tree)', 'enrollment_id (B-tree)', 'lesson_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'lesson_id', type:'uuid', fk:true, constraint:'NOT NULL → lessons' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'NOT NULL → enrollments' },
+      { name:'status', type:'attendance_status', constraint:'NOT NULL, default \'PRESENT\', enum' },
+      { name:'arrival_time', type:'time without time zone', constraint:'nullable' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'recorded_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'recorded_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'locked_at', type:'timestamptz', constraint:'NOT NULL' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['enrollments', 'lessons', 'users'],
+  },
+  "assessment_schemas": {
+    x:200, y:748, domain:'learning',
+    note: 'Assessment plan per course — theory/practical items, weights, pass marks, timing, ordering.',
+    enums: [{ name:'assessment_type', vals:['THEORY','PRACTICAL','ORAL','SKILL_CHECK'] }, { name:'assessment_timing', vals:['CONTINUOUS','FINAL'] }],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'assessment_type', type:'assessment_type', constraint:'NOT NULL, enum' },
+      { name:'timing', type:'assessment_timing', constraint:'NOT NULL, enum' },
+      { name:'max_score', type:'smallint', constraint:'NOT NULL, default 100' },
+      { name:'pass_score', type:'smallint', constraint:'NOT NULL, default 60' },
+      { name:'weight_pct', type:'smallint', constraint:'NOT NULL, default 100' },
+      { name:'sort_order', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'is_required', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'deleted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deleted_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+    ],
+    relations: ['courses', 'users', 'assessment_results'],
+  },
+  "assessment_results": {
+    x:380, y:748, domain:'learning',
+    note: 'Scores per enrollment × schema (renamed from assessments, v4.15) with lock window and moderation stamps.',
+    enums: [{ name:'assessment_result', vals:['PASS','FAIL','PENDING'] }],
+    indexes: ['enrollment_id, assessment_schema_id (UNIQUE B-tree)', 'enrollment_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'NOT NULL → enrollments' },
+      { name:'assessment_schema_id', type:'uuid', fk:true, constraint:'NOT NULL → assessment_schemas' },
+      { name:'score', type:'numeric(5,2)', constraint:'NOT NULL' },
+      { name:'max_score', type:'smallint', constraint:'NOT NULL' },
+      { name:'percentage', type:'numeric(5,2)', constraint:'NOT NULL' },
+      { name:'result', type:'assessment_result', constraint:'NOT NULL, enum' },
+      { name:'assessed_by', type:'uuid', fk:true, constraint:'NOT NULL → trainers' },
+      { name:'assessed_at', type:'timestamptz', constraint:'NOT NULL' },
+      { name:'recorded_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'locked_at', type:'timestamptz', constraint:'NOT NULL' },
+      { name:'is_moderated', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'moderated_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'moderated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'moderation_notes', type:'text', constraint:'nullable' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['assessment_schemas', 'enrollments', 'trainers', 'users', 'assessment_evidence'],
+  },
+  "assessment_evidence": {
+    x:560, y:748, domain:'learning',
+    note: 'Photo/document evidence attached to results — practical competency proof.',
+    enums: [{ name:'evidence_type', vals:['PHOTO','VIDEO','DOCUMENT'] }],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'assessment_id', type:'uuid', fk:true, constraint:'nullable → assessment_results' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'NOT NULL → enrollments' },
+      { name:'evidence_type', type:'evidence_type', constraint:'NOT NULL, enum' },
+      { name:'file_url', type:'text', constraint:'NOT NULL' },
+      { name:'description', type:'text', constraint:'nullable' },
+      { name:'uploaded_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'uploaded_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['assessment_results', 'enrollments', 'users'],
+  },
+
+  // ── COMMERCIAL ──
+  "quotes": {
+    x:20, y:896, domain:'commercial',
+    note: 'Corporate quotations with trigger-assigned numbering; pipeline feeds vw_quote_pipeline (v4.7). Acceptance spawns invoices.',
+    enums: [{ name:'quote_client_type', vals:['INDIVIDUAL','COMPANY'] }, { name:'quote_status', vals:['DRAFT','PENDING_REVIEW','SENT','ACCEPTED','DECLINED','CANCELLED'] }, { name:'quote_sent_via', vals:['EMAIL','WHATSAPP'] }],
+    indexes: ['quote_number (UNIQUE B-tree)', 'company_id (B-tree partial)', 'created_by (B-tree)', 'status (B-tree)', 'student_id (B-tree partial)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'quote_number', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'client_type', type:'quote_client_type', constraint:'NOT NULL, enum' },
+      { name:'student_id', type:'uuid', fk:true, constraint:'nullable → students (ON DELETE RESTRICT)' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies (ON DELETE RESTRICT)' },
+      { name:'status', type:'quote_status', constraint:'NOT NULL, default \'DRAFT\', enum' },
+      { name:'subtotal', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'discount_total', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'grand_total', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'sent_at', type:'timestamptz', constraint:'nullable' },
+      { name:'sent_via', type:'quote_sent_via', constraint:'nullable, enum' },
+      { name:'converted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'converted_by', type:'uuid', fk:true, constraint:'nullable → users (ON DELETE SET NULL)' },
+      { name:'converted_invoice_id', type:'uuid', fk:true, constraint:'nullable → invoices (ON DELETE SET NULL)' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_by', type:'uuid', fk:true, constraint:'NOT NULL → users (ON DELETE RESTRICT)' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'submitted_for_review_at', type:'timestamptz', constraint:'nullable' },
+      { name:'submitted_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'sent_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'pdf_url', type:'text', constraint:'nullable' },
+      { name:'pdf_sha256', type:'text', constraint:'nullable' },
+      { name:'pdf_issued_at', type:'timestamptz', constraint:'nullable' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+    ],
+    relations: ['companies', 'invoices', 'students', 'users', 'inquiries', 'quote_line_items'],
+  },
+  "quote_line_items": {
+    x:200, y:896, domain:'commercial',
+    note: 'Course × head-count lines on a quote; accepted lines link forward to enrollments.',
+    enums: [{ name:'training_mode', vals:['FULL_TIME','PART_TIME','ON_SITE_CORPORATE'] }, { name:'student_level', vals:['NOVICE','NOVICE_WITH_EXPERIENCE','RENEWAL'] }],
+    indexes: ['quote_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'quote_id', type:'uuid', fk:true, constraint:'NOT NULL → quotes (ON DELETE CASCADE)' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses (ON DELETE RESTRICT)' },
+      { name:'training_mode', type:'training_mode', constraint:'NOT NULL, enum' },
+      { name:'student_level', type:'student_level', constraint:'NOT NULL, enum' },
+      { name:'description', type:'text', constraint:'NOT NULL' },
+      { name:'quantity', type:'smallint', constraint:'NOT NULL, default 1' },
+      { name:'unit_price', type:'integer', constraint:'NOT NULL' },
+      { name:'discount_amount', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'total', type:'integer', constraint:'NOT NULL' },
+      { name:'sort_order', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['courses', 'quotes', 'enrollments'],
+  },
+  "corporate_enrollment_consents": {
+    x:380, y:896, domain:'commercial',
+    note: 'POPIA consent capture for employees enrolled by their employer.',
+    enums: [],
+    indexes: ['enrollment_id, consent_basis (B-tree)', 'student_id (B-tree)', 'enrollment_id (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'student_id', type:'uuid', fk:true, constraint:'NOT NULL → students' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'NOT NULL → enrollments' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'NOT NULL → companies' },
+      { name:'consent_version', type:'text', constraint:'NOT NULL' },
+      { name:'consent_text', type:'text', constraint:'NOT NULL' },
+      { name:'signed_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'signature_method', type:'text', constraint:'nullable' },
+      { name:'signature_image_url', type:'text', constraint:'nullable' },
+      { name:'captured_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'consent_basis', type:'text', constraint:'NOT NULL, default \'EXPLICIT_FORM_111\'' },
+      { name:'supersedes_consent_id', type:'uuid', fk:true, constraint:'nullable → corporate_enrollment_consents' },
+      { name:'opt_out_notified_at', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['companies', 'enrollments', 'students', 'users'],
+  },
+  "corporate_training_checklists": {
+    x:560, y:896, domain:'commercial',
+    note: 'Form-111 on-site readiness checklist per corporate cohort — expected counts, IDs supplied, photos, evidence, signatures.',
+    enums: [],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'NOT NULL → cohorts' },
+      { name:'completed_by', type:'uuid', fk:true, constraint:'NOT NULL → trainers' },
+      { name:'candidates_expected', type:'smallint', constraint:'NOT NULL' },
+      { name:'novice_count', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'renewal_count', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'novice_has_basic_knowledge', type:'boolean', constraint:'nullable' },
+      { name:'training_on_site', type:'boolean', constraint:'NOT NULL' },
+      { name:'company_has_machines', type:'boolean', constraint:'NOT NULL' },
+      { name:'candidates_assessed', type:'smallint', constraint:'nullable' },
+      { name:'candidates_missed', type:'smallint', constraint:'nullable' },
+      { name:'ids_supplied_count', type:'smallint', constraint:'nullable' },
+      { name:'ids_not_supplied_count', type:'smallint', constraint:'nullable' },
+      { name:'photos_taken_for_licences', type:'boolean', constraint:'nullable' },
+      { name:'evidence_captured', type:'boolean', constraint:'nullable' },
+      { name:'enrollment_forms_completed', type:'boolean', constraint:'nullable' },
+      { name:'attendance_signed_by_company', type:'boolean', constraint:'nullable' },
+      { name:'trainer_signature_url', type:'text', constraint:'nullable' },
+      { name:'company_rep_name', type:'text', constraint:'nullable' },
+      { name:'company_rep_signature_url', type:'text', constraint:'nullable' },
+      { name:'completed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['cohorts', 'trainers'],
+  },
+  "inquiries": {
+    x:740, y:896, domain:'commercial',
+    note: 'Lead-capture CRM staging (v4.7) — public-site and walk-in inquiries with source and status funnel.',
+    enums: [{ name:'inquiry_source', vals:['PHONE','WHATSAPP','WALK_IN','REFERRAL','WEB_FORM'] }, { name:'inquiry_status', vals:['NEW','CONTACTED','QUOTED','CONVERTED','LOST'] }],
+    indexes: ['search_tsv (GIN)', 'assigned_owner_user_id (B-tree partial)', 'status (B-tree)', 'source (B-tree)', 'captured_at (B-tree)', 'company_id (B-tree partial)', 'interest_course_id (B-tree partial)', 'resulting_quote_id (B-tree partial)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'source', type:'inquiry_source', constraint:'NOT NULL, enum' },
+      { name:'status', type:'inquiry_status', constraint:'NOT NULL, default \'NEW\', enum' },
+      { name:'contact_name', type:'text', constraint:'NOT NULL' },
+      { name:'contact_phone', type:'text', constraint:'nullable' },
+      { name:'contact_email', type:'text', constraint:'nullable' },
+      { name:'company_name', type:'text', constraint:'nullable' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+      { name:'interest_course_id', type:'uuid', fk:true, constraint:'nullable → courses' },
+      { name:'interest_note', type:'text', constraint:'nullable' },
+      { name:'assigned_owner_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'utm_source', type:'text', constraint:'nullable' },
+      { name:'utm_medium', type:'text', constraint:'nullable' },
+      { name:'utm_campaign', type:'text', constraint:'nullable' },
+      { name:'page_slug', type:'text', constraint:'nullable' },
+      { name:'resulting_quote_id', type:'uuid', fk:true, constraint:'nullable → quotes' },
+      { name:'resulting_enrollment_id', type:'uuid', fk:true, constraint:'nullable → enrollments' },
+      { name:'lost_reason', type:'text', constraint:'nullable' },
+      { name:'captured_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+      { name:'search_tsv', type:'tsvector', constraint:'nullable, default ((setweight(to_tsvector(\'simple…' },
+    ],
+    relations: ['companies', 'courses', 'enrollments', 'quotes', 'users', 'commissions'],
+  },
+
+  // ── FINANCIAL ──
+  "invoices": {
+    x:20, y:1044, domain:'financial',
+    note: 'Money-in documents (integer amounts). Amendment chain via parent_invoice_id/version; void is a stamped reversal, never a delete; idempotency-keyed writes (v4.8); PDF hash-stamped.',
+    enums: [{ name:'bill_to_type', vals:['STUDENT','COMPANY'] }, { name:'invoice_status', vals:['DRAFT','ISSUED','PARTIALLY_PAID','PAID','OVERDUE','CANCELLED','CREDITED','REVISED','VOIDED'] }],
+    indexes: ['invoice_number, version (UNIQUE B-tree)', 'company_id (B-tree partial)', 'status (B-tree)', 'student_id (B-tree partial)', 'invoice_number (UNIQUE B-tree partial)', 'quote_id (UNIQUE B-tree partial)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'invoice_number', type:'text', constraint:'NOT NULL' },
+      { name:'bill_to', type:'bill_to_type', constraint:'NOT NULL, enum' },
+      { name:'student_id', type:'uuid', fk:true, constraint:'nullable → students' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+      { name:'subtotal', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'discount_total', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'credit_total', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'tax_total', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'grand_total', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'amount_paid', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'balance_due', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'status', type:'invoice_status', constraint:'NOT NULL, default \'DRAFT\', enum' },
+      { name:'issued_at', type:'timestamptz', constraint:'nullable' },
+      { name:'due_date', type:'date', constraint:'nullable' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'version', type:'smallint', constraint:'NOT NULL, default 1' },
+      { name:'parent_invoice_id', type:'uuid', fk:true, constraint:'nullable → invoices (ON DELETE SET NULL)' },
+      { name:'is_current_version', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'amendment_reason', type:'text', constraint:'nullable' },
+      { name:'quote_id', type:'uuid', fk:true, constraint:'nullable → quotes (ON DELETE SET NULL)' },
+      { name:'voided_at', type:'timestamptz', constraint:'nullable' },
+      { name:'voided_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'voided_reason', type:'text', constraint:'nullable' },
+      { name:'pdf_url', type:'text', constraint:'nullable' },
+      { name:'pdf_sha256', type:'text', constraint:'nullable' },
+      { name:'pdf_issued_at', type:'timestamptz', constraint:'nullable' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+    ],
+    relations: ['companies', 'quotes', 'students', 'users', 'commissions', 'credit_notes', 'enrollments', 'invoice_line_items', 'payments'],
+  },
+  "invoice_line_items": {
+    x:200, y:1044, domain:'financial',
+    note: 'Invoice lines, enrollment-linked. Conditional delete guard (v4.14): removal permitted only at draft stage.',
+    enums: [{ name:'invoice_line_type', vals:['COURSE_FEE','DISCOUNT','CREDIT','REFUND','FREE_TRAINING'] }],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'invoice_id', type:'uuid', fk:true, constraint:'NOT NULL → invoices' },
+      { name:'line_type', type:'invoice_line_type', constraint:'NOT NULL, enum' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'nullable → enrollments' },
+      { name:'description', type:'text', constraint:'NOT NULL' },
+      { name:'quantity', type:'smallint', constraint:'NOT NULL, default 1' },
+      { name:'unit_price', type:'integer', constraint:'NOT NULL' },
+      { name:'total', type:'integer', constraint:'NOT NULL' },
+      { name:'sort_order', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['enrollments', 'invoices'],
+  },
+  "payments": {
+    x:380, y:1044, domain:'financial',
+    note: 'Receipts against invoices; direction column lets refunds post as reversals. Idempotency-keyed (v4.8).',
+    enums: [{ name:'payment_method', vals:['CASH','EFT','CARD','COMPANY_INVOICE'] }, { name:'payment_direction', vals:['INBOUND','OUTBOUND'] }],
+    indexes: ['invoice_id (B-tree)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'invoice_id', type:'uuid', fk:true, constraint:'NOT NULL → invoices' },
+      { name:'amount', type:'integer', constraint:'NOT NULL' },
+      { name:'payment_method', type:'payment_method', constraint:'NOT NULL, enum' },
+      { name:'reference', type:'text', constraint:'nullable' },
+      { name:'paid_at', type:'timestamptz', constraint:'NOT NULL' },
+      { name:'received_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'public_reference', type:'text', constraint:'nullable' },
+      { name:'internal_note', type:'text', constraint:'nullable' },
+      { name:'direction', type:'payment_direction', constraint:'NOT NULL, default \'INBOUND\', enum' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+    ],
+    relations: ['invoices', 'users', 'credit_notes'],
+  },
+  "credit_notes": {
+    x:560, y:1044, domain:'financial',
+    note: 'Credit issued against invoices — corrections are reversals, never edits.',
+    enums: [{ name:'credit_note_reason', vals:['BILLING_ERROR','NON_DELIVERY','WITHDRAWAL','GOODWILL','OVERPAYMENT','OTHER'] }, { name:'credit_note_status', vals:['DRAFT','ISSUED','APPLIED','REFUNDED','VOIDED'] }],
+    indexes: ['credit_note_number (UNIQUE B-tree)', 'company_id (B-tree)', 'credits_invoice_id (B-tree)', 'status (B-tree)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'credit_note_number', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'NOT NULL → companies' },
+      { name:'credits_invoice_id', type:'uuid', fk:true, constraint:'NOT NULL → invoices' },
+      { name:'issued_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'issued_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'reason_category', type:'credit_note_reason', constraint:'NOT NULL, enum' },
+      { name:'reason_detail', type:'text', constraint:'NOT NULL' },
+      { name:'subtotal', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'vat_amount', type:'numeric(12,2)', constraint:'NOT NULL, default 0' },
+      { name:'total', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'status', type:'credit_note_status', constraint:'NOT NULL, default \'DRAFT\', enum' },
+      { name:'applied_at', type:'timestamptz', constraint:'nullable' },
+      { name:'refunded_at', type:'timestamptz', constraint:'nullable' },
+      { name:'refund_payment_id', type:'uuid', fk:true, constraint:'nullable → payments' },
+      { name:'pdf_url', type:'text', constraint:'nullable' },
+      { name:'pdf_sha256', type:'text', constraint:'nullable' },
+      { name:'pdf_issued_at', type:'timestamptz', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+    ],
+    relations: ['companies', 'invoices', 'payments', 'users'],
+  },
+  "outgoings": {
+    x:740, y:1044, domain:'financial',
+    note: 'Money-out ledger (numeric 12,2): expenses, provider/CT settlements, commission payouts.',
+    enums: [{ name:'outgoing_type', vals:['OPERATIONAL_EXPENSE','COMMISSION_PAYOUT','OTHER','PROVIDER_PER_STUDENT','PROVIDER_FLAT','CT_PER_STUDENT','CT_FLAT'] }, { name:'outgoing_status', vals:['PENDING_APPROVAL','APPROVED','SETTLED','REJECTED','VOIDED'] }, { name:'payment_method', vals:['CASH','EFT','CARD','COMPANY_INVOICE'] }],
+    indexes: ['outgoing_number (UNIQUE B-tree)', 'category_id (B-tree partial)', 'cohort_id (B-tree partial)', 'recorded_by_user_id (B-tree)', 'settled_at (B-tree partial)', 'status (B-tree)', 'reverses_outgoing_id (UNIQUE B-tree partial)', 'type (B-tree)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'outgoing_number', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'type', type:'outgoing_type', constraint:'NOT NULL, default \'OPERATIONAL_EXPENSE\', enum' },
+      { name:'status', type:'outgoing_status', constraint:'NOT NULL, enum' },
+      { name:'amount', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'payment_method', type:'payment_method', constraint:'NOT NULL, enum' },
+      { name:'category_id', type:'uuid', fk:true, constraint:'nullable → expense_categories' },
+      { name:'description', type:'text', constraint:'NOT NULL' },
+      { name:'vendor_name', type:'text', constraint:'nullable' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'nullable → cohorts' },
+      { name:'location_id', type:'uuid', fk:true, constraint:'nullable → locations' },
+      { name:'receipt_url', type:'text', constraint:'nullable' },
+      { name:'receipt_sha256', type:'text', constraint:'nullable' },
+      { name:'recorded_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'approved_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'approved_at', type:'timestamptz', constraint:'nullable' },
+      { name:'settled_at', type:'timestamptz', constraint:'nullable' },
+      { name:'settled_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'voided_at', type:'timestamptz', constraint:'nullable' },
+      { name:'voided_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'void_reason', type:'text', constraint:'nullable' },
+      { name:'reverses_outgoing_id', type:'uuid', fk:true, constraint:'nullable → outgoings' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'handed_over_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'handed_over_at', type:'timestamptz', constraint:'nullable' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+    ],
+    relations: ['cohorts', 'expense_categories', 'locations', 'users', 'accruals', 'commissions'],
+  },
+  "expense_categories": {
+    x:920, y:1044, domain:'financial',
+    note: 'Taxonomy for outgoings.',
+    enums: [],
+    indexes: ['name (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'name', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'is_active', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'sort_order', type:'smallint', constraint:'NOT NULL, default 0' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['outgoings'],
+  },
+  "cash_deposits": {
+    x:1100, y:1044, domain:'financial',
+    note: 'Cash handed over for banking; custodian guard on handover.',
+    enums: [],
+    indexes: ['deposited_at (B-tree)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'amount', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'deposited_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'deposited_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'bank_reference', type:'text', constraint:'nullable' },
+      { name:'note', type:'text', constraint:'nullable' },
+      { name:'voided_at', type:'timestamptz', constraint:'nullable' },
+      { name:'voided_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'void_reason', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+    ],
+    relations: ['users'],
+  },
+  "cash_reconciliations": {
+    x:1280, y:1044, domain:'financial',
+    note: 'Append-only cash-drawer reconciliations; feeds vw_cash_drawer_balance v3.',
+    enums: [],
+    indexes: ['closed_at (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'closed_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'expected_amount', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'counted_amount', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'variance', type:'numeric(12,2)', constraint:'nullable, default (counted_amount - expected_amount)' },
+      { name:'variance_reason', type:'text', constraint:'nullable' },
+      { name:'counted_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'closed_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'note', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['users'],
+  },
+  "document_voids": {
+    x:1460, y:1044, domain:'financial',
+    note: 'Registry of voided financial documents with actor and reason.',
+    enums: [],
+    indexes: ['document_type, document_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'document_type', type:'text', constraint:'NOT NULL' },
+      { name:'document_id', type:'uuid', constraint:'NOT NULL' },
+      { name:'document_number', type:'text', constraint:'NOT NULL' },
+      { name:'original_total', type:'numeric(12,2)', constraint:'nullable' },
+      { name:'voided_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'voided_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'reason', type:'text', constraint:'NOT NULL' },
+    ],
+    relations: ['users'],
+  },
+  "moderation_audits": {
+    x:20, y:1138, domain:'financial',
+    note: 'Assessment-moderation audit records tied to cohorts.',
+    enums: [{ name:'moderation_scope', vals:['INTERNAL','EXTERNAL'] }, { name:'moderation_status', vals:['SCHEDULED','IN_PROGRESS','COMPLETED','FINDINGS_ISSUED'] }],
+    indexes: [],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'scope', type:'moderation_scope', constraint:'NOT NULL, enum' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'nullable → cohorts' },
+      { name:'enrollment_ids', type:'uuid[]', constraint:'NOT NULL, default \'{}\'' },
+      { name:'moderator_name', type:'text', constraint:'NOT NULL' },
+      { name:'moderator_organisation', type:'text', constraint:'nullable' },
+      { name:'accreditation_body_id', type:'uuid', fk:true, constraint:'nullable → accreditation_bodies' },
+      { name:'status', type:'moderation_status', constraint:'NOT NULL, default \'SCHEDULED\', enum' },
+      { name:'scheduled_at', type:'timestamptz', constraint:'nullable' },
+      { name:'conducted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'findings', type:'text', constraint:'nullable' },
+      { name:'corrective_actions', type:'text', constraint:'nullable' },
+      { name:'created_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['accreditation_bodies', 'cohorts', 'users'],
+  },
+  "provider_rate_cards": {
+    x:200, y:1138, domain:'financial',
+    note: 'Effective-dated pay rates for machine-training providers (rate_basis, v4.3).',
+    enums: [{ name:'rate_basis', vals:['PER_STUDENT','FLAT'] }],
+    indexes: ['machine_training_provider_id, course_id, effective_from (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'machine_training_provider_id', type:'uuid', fk:true, constraint:'NOT NULL → machine_training_providers' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'rate_basis', type:'rate_basis', constraint:'NOT NULL, enum' },
+      { name:'rate', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'effective_from', type:'date', constraint:'NOT NULL' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['courses', 'machine_training_providers', 'accruals'],
+  },
+  "corporate_trainer_rate_cards": {
+    x:380, y:1138, domain:'financial',
+    note: 'Effective-dated pay rates for corporate trainer contractors (v4.3).',
+    enums: [{ name:'rate_basis', vals:['PER_STUDENT','FLAT'] }],
+    indexes: ['corporate_trainer_id, course_id, effective_from (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'corporate_trainer_id', type:'uuid', fk:true, constraint:'NOT NULL → corporate_trainers' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'rate_basis', type:'rate_basis', constraint:'NOT NULL, enum' },
+      { name:'rate', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'effective_from', type:'date', constraint:'NOT NULL' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['corporate_trainers', 'courses', 'accruals'],
+  },
+  "accruals": {
+    x:560, y:1138, domain:'financial',
+    note: 'Partner-pay accrual ledger (v4.3 structure, v4.5 crystallisation): frozen at the finalising instant, counts immutable thereafter; settled via outgoings (v4.6).',
+    enums: [{ name:'rate_basis', vals:['PER_STUDENT','FLAT'] }],
+    indexes: ['machine_training_provider_id, cohort_id (UNIQUE B-tree partial)', 'corporate_trainer_id, cohort_id (UNIQUE B-tree partial)', 'cohort_id (B-tree partial)', 'settling_outgoing_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'NOT NULL → cohorts' },
+      { name:'machine_training_provider_id', type:'uuid', fk:true, constraint:'nullable → machine_training_providers' },
+      { name:'corporate_trainer_id', type:'uuid', fk:true, constraint:'nullable → corporate_trainers' },
+      { name:'provider_rate_card_id', type:'uuid', fk:true, constraint:'nullable → provider_rate_cards' },
+      { name:'corporate_trainer_rate_card_id', type:'uuid', fk:true, constraint:'nullable → corporate_trainer_rate_cards' },
+      { name:'amount', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'booked_count', type:'integer', constraint:'NOT NULL' },
+      { name:'rate_basis', type:'rate_basis', constraint:'NOT NULL, enum' },
+      { name:'rate', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'settling_outgoing_id', type:'uuid', fk:true, constraint:'nullable → outgoings' },
+      { name:'crystallised_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['cohorts', 'corporate_trainer_rate_cards', 'corporate_trainers', 'machine_training_providers', 'outgoings', 'provider_rate_cards'],
+  },
+  "commissions": {
+    x:740, y:1138, domain:'financial',
+    note: 'Sales-commission ledger (v4.7): earn→approve→pay transitions trigger-guarded; payout links to outgoings; vw_commissions_payable is the Owner worklist.',
+    enums: [{ name:'commission_status', vals:['ACCRUED','APPROVED','PAID','CANCELLED'] }],
+    indexes: ['source_invoice_id (UNIQUE B-tree)', 'earner_user_id (B-tree)', 'status (B-tree)', 'inquiry_id (B-tree)', 'settling_outgoing_id (B-tree partial)', 'earner_user_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'inquiry_id', type:'uuid', fk:true, constraint:'NOT NULL → inquiries' },
+      { name:'source_invoice_id', type:'uuid', fk:true, constraint:'UNIQUE, NOT NULL → invoices' },
+      { name:'earner_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'amount', type:'numeric(12,2)', constraint:'NOT NULL' },
+      { name:'status', type:'commission_status', constraint:'NOT NULL, default \'ACCRUED\', enum' },
+      { name:'approved_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'approved_at', type:'timestamptz', constraint:'nullable' },
+      { name:'cancelled_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'cancelled_at', type:'timestamptz', constraint:'nullable' },
+      { name:'cancel_reason', type:'text', constraint:'nullable' },
+      { name:'settling_outgoing_id', type:'uuid', fk:true, constraint:'nullable → outgoings' },
+      { name:'accrued_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['inquiries', 'invoices', 'outgoings', 'users'],
+  },
+
+  // ── CERTIFICATION ──
+  "certificates": {
+    x:740, y:748, domain:'cert',
+    note: 'Issued certificates per enrollment (renamed from issued_certificates, v4.15). PENDING→…→REVOKED status machine; renewal chain via renews_certificate_id; PDF sha256-stamped; idempotency-keyed.',
+    enums: [{ name:'certificate_status', vals:['PENDING','ELIGIBLE','ISSUED','RENEWAL_DUE','EXPIRED','REVOKED'] }, { name:'renewal_method', vals:['REFRESHER','REASSESSMENT_ONLY','FULL_RETRAIN'] }],
+    indexes: ['certificate_number (UNIQUE B-tree)', 'enrollment_id, certificate_template_id (UNIQUE B-tree)', 'expires_at (B-tree partial)', 'renews_certificate_id (B-tree partial)', 'expires_at (B-tree partial)', 'status (B-tree)', 'student_id (B-tree)', 'client_idempotency_key (UNIQUE B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'NOT NULL → enrollments' },
+      { name:'certificate_template_id', type:'uuid', fk:true, constraint:'NOT NULL → certificate_templates' },
+      { name:'student_id', type:'uuid', fk:true, constraint:'NOT NULL → students' },
+      { name:'certificate_number', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'status', type:'certificate_status', constraint:'NOT NULL, default \'PENDING\', enum' },
+      { name:'issued_at', type:'timestamptz', constraint:'nullable' },
+      { name:'valid_from', type:'date', constraint:'nullable' },
+      { name:'expires_at', type:'date', constraint:'nullable' },
+      { name:'generated_file_url', type:'text', constraint:'nullable' },
+      { name:'generated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'generated_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'override_reason', type:'text', constraint:'nullable' },
+      { name:'renews_certificate_id', type:'uuid', fk:true, constraint:'nullable → certificates' },
+      { name:'renewal_method', type:'renewal_method', constraint:'nullable, enum' },
+      { name:'pdf_url', type:'text', constraint:'nullable' },
+      { name:'pdf_sha256', type:'text', constraint:'nullable' },
+      { name:'pdf_issued_at', type:'timestamptz', constraint:'nullable' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+    ],
+    relations: ['certificate_templates', 'enrollments', 'students', 'users'],
+  },
+
+  // ── COMMUNICATION ──
+  "threads": {
+    x:20, y:1286, domain:'comms',
+    note: 'Conversation containers between platform users (e.g. office ↔ company rep).',
+    enums: [{ name:'thread_party_type', vals:['COMPANY','MACHINE_TRAINING_PROVIDER','CORPORATE_TRAINER'] }, { name:'thread_channel', vals:['PORTAL','WHATSAPP','SMS','EMAIL','PHONE'] }, { name:'thread_status', vals:['OPEN','CLOSED'] }],
+    indexes: ['company_id (B-tree partial)', 'corporate_trainer_id (B-tree partial)', 'machine_training_provider_id (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'party_type', type:'thread_party_type', constraint:'NOT NULL, enum' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+      { name:'machine_training_provider_id', type:'uuid', fk:true, constraint:'nullable → machine_training_providers' },
+      { name:'subject', type:'text', constraint:'NOT NULL' },
+      { name:'channel', type:'thread_channel', constraint:'NOT NULL, default \'PORTAL\', enum' },
+      { name:'status', type:'thread_status', constraint:'NOT NULL, default \'OPEN\', enum' },
+      { name:'created_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'corporate_trainer_id', type:'uuid', fk:true, constraint:'nullable → corporate_trainers' },
+    ],
+    relations: ['companies', 'corporate_trainers', 'machine_training_providers', 'users', 'provider_bookings', 'thread_messages'],
+  },
+  "thread_messages": {
+    x:200, y:1286, domain:'comms',
+    note: 'Messages within a thread.',
+    enums: [{ name:'message_direction', vals:['OUTBOUND','INBOUND'] }],
+    indexes: ['thread_id, sent_at (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'thread_id', type:'uuid', fk:true, constraint:'NOT NULL → threads' },
+      { name:'direction', type:'message_direction', constraint:'NOT NULL, enum' },
+      { name:'body', type:'text', constraint:'NOT NULL' },
+      { name:'author_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'recorded_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'sent_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['threads', 'users'],
+  },
+  "notifications": {
+    x:380, y:1286, domain:'comms',
+    note: 'Outbound notifications per user across channels.',
+    enums: [{ name:'notification_type', vals:['CERTIFICATE_ISSUED','CERTIFICATE_EXPIRING_90','CERTIFICATE_EXPIRING_60','CERTIFICATE_EXPIRING_30','CERTIFICATE_EXPIRED','INVOICE_ISSUED','INVOICE_PAYMENT_RECEIVED','CREDIT_NOTE_ISSUED','FEEDBACK_ACKNOWLEDGED','FEEDBACK_RESOLVED','COHORT_COMPLETED','ATTENDANCE_ALERT','EDIT_REQUEST_APPROVED','EDIT_REQUEST_DENIED','CO_OWNER_GRANT_ACTIVE','CO_OWNER_GRANT_REVOKED'] }],
+    indexes: ['created_at (B-tree partial)', 'user_id (B-tree partial)', 'user_id, created_at DESC (B-tree)', 'user_id, created_at DESC (B-tree partial)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'type', type:'notification_type', constraint:'NOT NULL, enum' },
+      { name:'payload', type:'jsonb', constraint:'NOT NULL' },
+      { name:'source_table', type:'text', constraint:'nullable' },
+      { name:'source_id', type:'uuid', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'read_at', type:'timestamptz', constraint:'nullable' },
+      { name:'dismissed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'email_required', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'email_sent_at', type:'timestamptz', constraint:'nullable' },
+      { name:'email_error', type:'text', constraint:'nullable' },
+      { name:'whatsapp_required', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'whatsapp_sent_at', type:'timestamptz', constraint:'nullable' },
+      { name:'whatsapp_error', type:'text', constraint:'nullable' },
+      { name:'sms_required', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'sms_sent_at', type:'timestamptz', constraint:'nullable' },
+      { name:'sms_error', type:'text', constraint:'nullable' },
+    ],
+    relations: ['users'],
+  },
+  "notification_preferences": {
+    x:560, y:1286, domain:'comms',
+    note: 'Per-user channel opt-ins.',
+    enums: [],
+    indexes: [],
+    fields: [
+      { name:'user_id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'in_app_enabled', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'daily_digest_enabled', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'digest_send_local_hour', type:'smallint', constraint:'NOT NULL, default 7' },
+      { name:'immediate_email_invoice', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'immediate_email_certificate', type:'boolean', constraint:'NOT NULL, default true' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'last_digest_at', type:'timestamptz', constraint:'nullable' },
+      { name:'whatsapp_enabled', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'sms_enabled', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'timezone', type:'text', constraint:'NOT NULL, default \'Africa/Johannesburg\'' },
+    ],
+    relations: ['users'],
+  },
+
+  // ── GOVERNANCE ──
+  "audit_log": {
+    x:740, y:1286, domain:'governance',
+    note: 'Append-only per-row effect log across the platform. authority_basis ties privileged actions back to co_owner_grants.',
+    enums: [],
+    indexes: ['created_at (B-tree)', 'table_name, record_id (B-tree)', 'user_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'action', type:'text', constraint:'NOT NULL' },
+      { name:'table_name', type:'text', constraint:'NOT NULL' },
+      { name:'record_id', type:'uuid', constraint:'NOT NULL' },
+      { name:'old_values', type:'jsonb', constraint:'nullable' },
+      { name:'new_values', type:'jsonb', constraint:'nullable' },
+      { name:'ip_address', type:'inet', constraint:'nullable' },
+      { name:'user_agent', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'authority_basis', type:'text', constraint:'NOT NULL, default \'BASE_ROLE\'' },
+      { name:'authority_granted_by', type:'uuid', fk:true, constraint:'nullable → users' },
+    ],
+    relations: ['users'],
+  },
+  "edit_requests": {
+    x:920, y:1286, domain:'governance',
+    note: 'Request/approve workflow for correcting locked records (attendance, assessment results).',
+    enums: [{ name:'edit_request_status', vals:['PENDING','APPROVED','DENIED'] }, { name:'edit_request_category', vals:['OPERATIONAL','FINANCIAL'] }],
+    indexes: ['category, status (B-tree)', 'status (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'target_table', type:'text', constraint:'NOT NULL' },
+      { name:'target_record_id', type:'uuid', constraint:'NOT NULL' },
+      { name:'requested_by', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'reason', type:'text', constraint:'NOT NULL' },
+      { name:'field_name', type:'text', constraint:'NOT NULL' },
+      { name:'old_value', type:'text', constraint:'NOT NULL' },
+      { name:'new_value', type:'text', constraint:'NOT NULL' },
+      { name:'status', type:'edit_request_status', constraint:'NOT NULL, default \'PENDING\', enum' },
+      { name:'resolved_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'resolved_at', type:'timestamptz', constraint:'nullable' },
+      { name:'resolution_notes', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'category', type:'edit_request_category', constraint:'nullable, default CASE target_table WHEN \'invoice…, enum' },
+    ],
+    relations: ['users'],
+  },
+  "data_subject_redactions": {
+    x:1100, y:1286, domain:'governance',
+    note: 'POPIA erasure ledger — fn_redact_data_subject (SECURITY DEFINER) runs recorded here; certificates explicitly exempt.',
+    enums: [],
+    indexes: ['subject_user_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'subject_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'requested_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'requested_via', type:'text', constraint:'NOT NULL' },
+      { name:'request_summary', type:'text', constraint:'NOT NULL' },
+      { name:'approved_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'approved_at', type:'timestamptz', constraint:'nullable' },
+      { name:'executed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'retained_for', type:'text', constraint:'nullable' },
+      { name:'redaction_summary', type:'jsonb', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['users'],
+  },
+  "company_feedback": {
+    x:1280, y:1286, domain:'governance',
+    note: 'Post-training feedback from corporate clients.',
+    enums: [{ name:'feedback_target', vals:['ENROLLMENT','COHORT','COMPANY_THREAD'] }, { name:'feedback_status', vals:['OPEN','ACKNOWLEDGED','RESOLVED'] }],
+    indexes: ['company_id, status (B-tree)', 'target_cohort_id (B-tree partial)', 'target_enrollment_id (B-tree partial)', 'thread_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'PRIMARY KEY' },
+      { name:'thread_id', type:'uuid', constraint:'NOT NULL' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'NOT NULL → companies' },
+      { name:'target_type', type:'feedback_target', constraint:'NOT NULL, enum' },
+      { name:'target_enrollment_id', type:'uuid', fk:true, constraint:'nullable → enrollments' },
+      { name:'target_cohort_id', type:'uuid', fk:true, constraint:'nullable → cohorts' },
+      { name:'author_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'body', type:'text', constraint:'NOT NULL' },
+      { name:'status', type:'feedback_status', constraint:'NOT NULL, default \'OPEN\', enum' },
+      { name:'acknowledged_at', type:'timestamptz', constraint:'nullable' },
+      { name:'acknowledged_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'resolved_at', type:'timestamptz', constraint:'nullable' },
+      { name:'resolved_by', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'resolution_summary', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'deleted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'deleted_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+    ],
+    relations: ['cohorts', 'companies', 'enrollments', 'users'],
+  },
+  "bulk_operations": {
+    x:1460, y:1286, domain:'governance',
+    note: 'Command envelope for bulk actions (v4.13) — records operator intent; audit_log records the per-row effect.',
+    enums: [{ name:'bulk_operation_type', vals:['COHORT_COMPLETE','CERTIFICATE_ISSUE','RENEWAL_REMINDER','REP_DEACTIVATE'] }, { name:'bulk_operation_status', vals:['PENDING','RUNNING','COMPLETED','PARTIAL','FAILED'] }],
+    indexes: ['client_idempotency_key (UNIQUE B-tree partial)', 'requested_by_user_id (B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'operation_type', type:'bulk_operation_type', constraint:'NOT NULL, enum' },
+      { name:'status', type:'bulk_operation_status', constraint:'NOT NULL, default \'PENDING\', enum' },
+      { name:'requested_by_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'parameters', type:'jsonb', constraint:'NOT NULL, default \'{}\'' },
+      { name:'target_count', type:'integer', constraint:'nullable' },
+      { name:'succeeded_count', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'failed_count', type:'integer', constraint:'NOT NULL, default 0' },
+      { name:'result', type:'jsonb', constraint:'nullable' },
+      { name:'client_idempotency_key', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'completed_at', type:'timestamptz', constraint:'nullable' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['users'],
+  },
+
+  // ── REVIEWS ──
+  "reviews": {
+    x:920, y:896, domain:'reviews',
+    note: 'Reputation subsystem (v4.9). Provenance + transition trigger guards; erasure-safe publication via vw_published_reviews; per-course AggregateRating via vw_course_aggregate_rating.',
+    enums: [{ name:'review_author_type', vals:['STUDENT','COMPANY_REP'] }, { name:'review_destination', vals:['ON_SITE','EXTERNAL'] }, { name:'review_platform', vals:['GOOGLE_BUSINESS','HELLOPETER'] }, { name:'review_status', vals:['PENDING','APPROVED','REJECTED','PUBLISHED','WITHDRAWN'] }],
+    indexes: ['author_user_id (B-tree)', 'course_id (B-tree)', 'subject_trainer_id (B-tree partial)', 'enrollment_id (B-tree partial)', 'company_id (B-tree partial)', 'cohort_id (B-tree partial)', 'status (B-tree)', 'destination (B-tree)', 'course_id (B-tree partial)', 'enrollment_id (UNIQUE B-tree partial)', 'company_id, author_user_id, cohort_id) NULLS NOT DISTINCT WHERE (author_type = \'COMPANY_REP\' (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'author_type', type:'review_author_type', constraint:'NOT NULL, enum' },
+      { name:'author_user_id', type:'uuid', fk:true, constraint:'NOT NULL → users' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'NOT NULL → courses' },
+      { name:'subject_trainer_id', type:'uuid', fk:true, constraint:'nullable → trainers' },
+      { name:'enrollment_id', type:'uuid', fk:true, constraint:'nullable → enrollments' },
+      { name:'company_id', type:'uuid', fk:true, constraint:'nullable → companies' },
+      { name:'cohort_id', type:'uuid', fk:true, constraint:'nullable → cohorts' },
+      { name:'rating', type:'smallint', constraint:'nullable' },
+      { name:'title', type:'text', constraint:'nullable' },
+      { name:'body', type:'text', constraint:'nullable' },
+      { name:'structured_answers', type:'jsonb', constraint:'NOT NULL, default \'{}\'' },
+      { name:'destination', type:'review_destination', constraint:'NOT NULL, enum' },
+      { name:'external_platform', type:'review_platform', constraint:'nullable, enum' },
+      { name:'external_prompted_at', type:'timestamptz', constraint:'nullable' },
+      { name:'external_url', type:'text', constraint:'nullable' },
+      { name:'published_url', type:'text', constraint:'nullable' },
+      { name:'consent_to_publish', type:'boolean', constraint:'NOT NULL, default false' },
+      { name:'publish_consent_at', type:'timestamptz', constraint:'nullable' },
+      { name:'publish_display_name', type:'text', constraint:'nullable' },
+      { name:'status', type:'review_status', constraint:'NOT NULL, default \'PENDING\', enum' },
+      { name:'moderated_by_user_id', type:'uuid', fk:true, constraint:'nullable → users' },
+      { name:'moderated_at', type:'timestamptz', constraint:'nullable' },
+      { name:'rejection_reason', type:'text', constraint:'nullable' },
+      { name:'created_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'updated_at', type:'timestamptz', constraint:'NOT NULL, default now()' },
+    ],
+    relations: ['cohorts', 'companies', 'courses', 'enrollments', 'trainers', 'users'],
+  },
+
+  // ── CMS — CMS SCHEMA (DIRECTUS) ──
+  "cms.course_marketing": {
+    x:20, y:1434, domain:'cms',
+    note: 'Marketing companion keyed 1:1 to public.courses (course_id UNIQUE). Operational course facts stay in public.courses; this holds hero image, long-form sales copy, SEO meta. course_id FK ON DELETE CASCADE is inert in practice — public.courses forbids hard delete (v4.14 #13) — and stands as belt-and-braces only.',
+    enums: [],
+    indexes: ['course_id (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'course_id', type:'uuid', fk:true, constraint:'UNIQUE, NOT NULL → courses (ON DELETE CASCADE)' },
+      { name:'hero_image_url', type:'text', constraint:'nullable' },
+      { name:'sales_copy', type:'text', constraint:'nullable' },
+      { name:'seo_title', type:'text', constraint:'nullable' },
+      { name:'seo_description', type:'text', constraint:'nullable' },
+      { name:'og_image_url', type:'text', constraint:'nullable' },
+      { name:'status', type:'cms.content_status', constraint:'NOT NULL, default \'draft\', enum' },
+      { name:'sort', type:'integer', constraint:'nullable' },
+      { name:'date_created', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'date_updated', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['courses'],
+  },
+  "cms.page": {
+    x:200, y:1434, domain:'cms',
+    note: 'Singleton page bodies keyed by UPPER_SNAKE page_key (HOME_HERO, HOME_BELOW_FOLD, ABOUT, FOR_BUSINESS, FOOTER, CONTACT_INTRO). Free-text key (not an enum) so a new static page is one row + one app route, never an ADD VALUE migration.',
+    enums: [],
+    indexes: ['page_key (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'page_key', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'title', type:'text', constraint:'nullable' },
+      { name:'body', type:'text', constraint:'nullable' },
+      { name:'seo_title', type:'text', constraint:'nullable' },
+      { name:'seo_description', type:'text', constraint:'nullable' },
+      { name:'og_image_url', type:'text', constraint:'nullable' },
+      { name:'status', type:'cms.content_status', constraint:'NOT NULL, default \'draft\', enum' },
+      { name:'sort', type:'integer', constraint:'nullable' },
+      { name:'date_created', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'date_updated', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: [],
+  },
+  "cms.category_landing": {
+    x:380, y:1434, domain:'cms',
+    note: 'Marketing copy for category pillar pages, keyed 1:1 to public.categories (category_id UNIQUE, FK ON DELETE CASCADE, inert — public.categories forbids hard delete under v4.14 #13). The courses shown are read live over public.',
+    enums: [],
+    indexes: ['category_id (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'category_id', type:'uuid', fk:true, constraint:'UNIQUE, NOT NULL → categories (ON DELETE CASCADE)' },
+      { name:'intro_copy', type:'text', constraint:'nullable' },
+      { name:'seo_title', type:'text', constraint:'nullable' },
+      { name:'seo_description', type:'text', constraint:'nullable' },
+      { name:'og_image_url', type:'text', constraint:'nullable' },
+      { name:'status', type:'cms.content_status', constraint:'NOT NULL, default \'draft\', enum' },
+      { name:'sort', type:'integer', constraint:'nullable' },
+      { name:'date_created', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'date_updated', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['categories'],
+  },
+  "cms.location_landing": {
+    x:560, y:1434, domain:'cms',
+    note: 'Geographic-market landing pages (durban, richards-bay, kzn). CMS-native by design: public.locations is operational and includes PRIVATE company training sites that must not be indexed, so these pages are deliberately NOT FK-bound to public.locations.',
+    enums: [],
+    indexes: ['slug (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'slug', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'region_name', type:'text', constraint:'NOT NULL' },
+      { name:'intro_copy', type:'text', constraint:'nullable' },
+      { name:'seo_title', type:'text', constraint:'nullable' },
+      { name:'seo_description', type:'text', constraint:'nullable' },
+      { name:'og_image_url', type:'text', constraint:'nullable' },
+      { name:'status', type:'cms.content_status', constraint:'NOT NULL, default \'draft\', enum' },
+      { name:'sort', type:'integer', constraint:'nullable' },
+      { name:'date_created', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'date_updated', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: [],
+  },
+  "cms.author": {
+    x:740, y:1434, domain:'cms',
+    note: 'Blog bylines. CMS-native (name, bio, photo, credentials) — deliberately NOT coupled to public users/trainers, keeping the public PII boundary intact.',
+    enums: [],
+    indexes: ['slug (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'name', type:'text', constraint:'NOT NULL' },
+      { name:'slug', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'bio', type:'text', constraint:'nullable' },
+      { name:'photo_url', type:'text', constraint:'nullable' },
+      { name:'credentials', type:'text', constraint:'nullable' },
+      { name:'status', type:'cms.content_status', constraint:'NOT NULL, default \'draft\', enum' },
+      { name:'sort', type:'integer', constraint:'nullable' },
+      { name:'date_created', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'date_updated', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['cms.post'],
+  },
+  "cms.post": {
+    x:920, y:1434, domain:'cms',
+    note: 'Blog posts. author_id ON DELETE SET NULL — removing an author de-attributes their posts rather than deleting them. published_at is the editorial go-live moment (ordering/RSS), distinct from status and date_created.',
+    enums: [],
+    indexes: ['slug (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'slug', type:'text', constraint:'UNIQUE, NOT NULL' },
+      { name:'title', type:'text', constraint:'NOT NULL' },
+      { name:'excerpt', type:'text', constraint:'nullable' },
+      { name:'body', type:'text', constraint:'nullable' },
+      { name:'author_id', type:'uuid', fk:true, constraint:'nullable → cms.author (ON DELETE SET NULL)' },
+      { name:'hero_image_url', type:'text', constraint:'nullable' },
+      { name:'seo_title', type:'text', constraint:'nullable' },
+      { name:'seo_description', type:'text', constraint:'nullable' },
+      { name:'og_image_url', type:'text', constraint:'nullable' },
+      { name:'published_at', type:'timestamptz', constraint:'nullable' },
+      { name:'status', type:'cms.content_status', constraint:'NOT NULL, default \'draft\', enum' },
+      { name:'sort', type:'integer', constraint:'nullable' },
+      { name:'date_created', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'date_updated', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: ['cms.author'],
+  },
+  "cms.legal_document": {
+    x:1100, y:1434, domain:'cms',
+    note: 'Versioned legal bodies (doc_key PRIVACY/TERMS/COOKIE/PAIA + version). Body text only. The who-accepted-which-version acceptance record is OPERATIONAL and stays in public — deliberately out of scope for v4.17.',
+    enums: [],
+    indexes: ['doc_key, version (UNIQUE B-tree)'],
+    fields: [
+      { name:'id', type:'uuid', pk:true, constraint:'gen_random_uuid()' },
+      { name:'doc_key', type:'text', constraint:'NOT NULL' },
+      { name:'version', type:'text', constraint:'NOT NULL' },
+      { name:'body', type:'text', constraint:'NOT NULL' },
+      { name:'effective_date', type:'date', constraint:'nullable' },
+      { name:'status', type:'cms.content_status', constraint:'NOT NULL, default \'draft\', enum' },
+      { name:'sort', type:'integer', constraint:'nullable' },
+      { name:'date_created', type:'timestamptz', constraint:'NOT NULL, default now()' },
+      { name:'date_updated', type:'timestamptz', constraint:'nullable' },
+    ],
+    relations: [],
+  },
+}; // end ENTITIES
+
+const SCENARIOS = {
+  enrol: {
+    label: 'Student Enrols',
+    color: 'var(--people)',
+    stateMachine: ['REGISTERED','ACTIVE','COMPLETED','FAILED','WITHDRAWN','SUSPENDED'],
+    steps: [
+      {
+        entities: ['users','students'],
+        conn: [{ from:'students', to:'users' }],
+        log: `<span class='kw'>SELECT</span> u.*, s.student_number, s.preferred_language <span class='kw'>FROM</span> <span class='tbl'>users</span> u <span class='kw'>JOIN</span> <span class='tbl'>students</span> s <span class='kw'>ON</span> s.user_id = u.id <span class='kw'>WHERE</span> u.email = <span class='val'>$1</span>`,
+      },
+      {
+        entities: ['courses','cohorts'],
+        conn: [{ from:'cohorts', to:'courses' }],
+        log: `<span class='kw'>SELECT</span> c.*, co.start_date, (co.max_capacity - co.current_enrollment) seats_left <span class='kw'>FROM</span> <span class='tbl'>cohorts</span> co <span class='kw'>JOIN</span> <span class='tbl'>courses</span> c <span class='kw'>ON</span> c.id = co.course_id <span class='kw'>WHERE</span> co.status = <span class='val'>'SCHEDULED'</span> AND co.cohort_type = <span class='val'>'OPEN'</span>`,
+      },
+      {
+        entities: ['enrollments'],
+        conn: [{ from:'enrollments', to:'cohorts' }, { from:'enrollments', to:'students' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>enrollments</span> (student_id, cohort_id, status, student_level, enrolled_at) <span class='kw'>VALUES</span> (<span class='val'>$s</span>, <span class='val'>$c</span>, <span class='val'>'REGISTERED'</span>, <span class='val'>'NOVICE'</span>, now()) <span class='kw'>RETURNING</span> id -- current_enrollment bumped by trigger`,
+      },
+      {
+        entities: ['invoices','invoice_line_items'],
+        conn: [{ from:'invoice_line_items', to:'invoices' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>invoices</span> (invoice_number, bill_to, student_id, grand_total, status, client_idempotency_key) <span class='kw'>VALUES</span> (gen_invoice_no(), <span class='val'>'STUDENT'</span>, <span class='val'>$s</span>, <span class='val'>350000</span>, <span class='val'>'ISSUED'</span>, <span class='val'>$key</span>); <span class='kw'>INSERT INTO</span> <span class='tbl'>invoice_line_items</span> ... -- money-in in integer cents`,
+      },
+      {
+        entities: ['enrollment_status_history'],
+        conn: [{ from:'enrollment_status_history', to:'enrollments' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>enrollment_status_history</span> (enrollment_id, from_status, to_status, changed_by, changed_at) <span class='kw'>VALUES</span> (<span class='val'>$e</span>, NULL, <span class='val'>'REGISTERED'</span>, <span class='val'>$admin</span>, now())`,
+      },
+      {
+        entities: ['audit_log'],
+        conn: [{ from:'audit_log', to:'users' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>audit_log</span> (table_name, record_id, action, new_values, user_id) <span class='kw'>VALUES</span> (<span class='val'>'enrollments'</span>, <span class='val'>$e</span>, <span class='val'>'INSERT'</span>, <span class='val'>$data</span>, <span class='val'>$admin</span>)`,
+      },
+    ],
+  },
+  attendance: {
+    label: 'Record Attendance',
+    color: 'var(--delivery)',
+    steps: [
+      {
+        entities: ['trainer_clock_ins','trainers'],
+        conn: [{ from:'trainer_clock_ins', to:'trainers' }],
+        log: `<span class='kw'>SELECT</span> * <span class='kw'>FROM</span> <span class='tbl'>trainer_clock_ins</span> <span class='kw'>WHERE</span> trainer_id = <span class='val'>$1</span> AND work_date = CURRENT_DATE AND clocked_out_at IS NULL -- internal trainer is clocked in`,
+      },
+      {
+        entities: ['lessons','cohorts'],
+        conn: [{ from:'lessons', to:'cohorts' }],
+        log: `<span class='kw'>SELECT</span> l.* <span class='kw'>FROM</span> <span class='tbl'>lessons</span> l <span class='kw'>WHERE</span> l.cohort_id = <span class='val'>$1</span> AND l.date = CURRENT_DATE AND l.is_cancelled = false`,
+      },
+      {
+        entities: ['enrollments','students'],
+        conn: [{ from:'enrollments', to:'students' }],
+        log: `<span class='kw'>SELECT</span> e.id, s.first_name, s.last_name, s.student_number <span class='kw'>FROM</span> <span class='tbl'>enrollments</span> e <span class='kw'>JOIN</span> <span class='tbl'>students</span> s <span class='kw'>ON</span> s.id = e.student_id <span class='kw'>WHERE</span> e.cohort_id = <span class='val'>$1</span> AND e.status = <span class='val'>'ACTIVE'</span>`,
+      },
+      {
+        entities: ['attendance'],
+        conn: [{ from:'attendance', to:'lessons' }, { from:'attendance', to:'enrollments' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>attendance</span> (lesson_id, enrollment_id, status, recorded_by, recorded_at, locked_at) <span class='kw'>VALUES</span> ... (24 students) <span class='kw'>ON CONFLICT DO NOTHING</span> -- locked shortly after; edits via edit_requests`,
+      },
+      {
+        entities: ['audit_log'],
+        conn: [{ from:'audit_log', to:'users' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>audit_log</span> (table_name, action, user_id) <span class='kw'>SELECT</span> <span class='val'>'attendance'</span>, <span class='val'>'INSERT'</span>, <span class='val'>$trainer</span> ... (24 rows)`,
+      },
+    ],
+  },
+  certify: {
+    label: 'Issue Certificate',
+    color: 'var(--cert)',
+    stateMachine: ['PENDING','ELIGIBLE','ISSUED','RENEWAL_DUE','EXPIRED','REVOKED'],
+    steps: [
+      {
+        entities: ['enrollments','invoices'],
+        conn: [{ from:'enrollments', to:'invoices' }],
+        log: `<span class='kw'>SELECT</span> e.id, e.attendance_pct, e.overall_result, inv.balance_due <span class='kw'>FROM</span> <span class='tbl'>enrollments</span> e <span class='kw'>JOIN</span> <span class='tbl'>invoices</span> inv <span class='kw'>ON</span> inv.id = e.invoice_id <span class='kw'>WHERE</span> e.status = <span class='val'>'COMPLETED'</span> AND e.overall_result = <span class='val'>'PASS'</span> AND inv.balance_due = 0`,
+      },
+      {
+        entities: ['certificate_templates','courses'],
+        conn: [{ from:'certificate_templates', to:'courses' }],
+        log: `<span class='kw'>SELECT</span> ct.* <span class='kw'>FROM</span> <span class='tbl'>certificate_templates</span> ct <span class='kw'>WHERE</span> ct.course_id = <span class='val'>$course_id</span> AND ct.is_active = true -- 2 templates found: Operator Licence + Safety Certificate`,
+      },
+      {
+        entities: ['certificates'],
+        conn: [{ from:'certificates', to:'enrollments' }, { from:'certificates', to:'certificate_templates' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>certificates</span> (enrollment_id, certificate_template_id, student_id, certificate_number, status, client_idempotency_key) <span class='kw'>VALUES</span> (<span class='val'>$e</span>, <span class='val'>$t</span>, <span class='val'>$s</span>, gen_cert_number(), <span class='val'>'ELIGIBLE'</span>, <span class='val'>$key</span>)`,
+      },
+      {
+        entities: ['certificates'],
+        conn: [],
+        log: `<span class='kw'>UPDATE</span> <span class='tbl'>certificates</span> <span class='kw'>SET</span> status = <span class='val'>'ISSUED'</span>, pdf_url = <span class='val'>$s3_url</span>, pdf_sha256 = <span class='val'>$hash</span>, pdf_issued_at = now(), issued_at = now(), valid_from = CURRENT_DATE <span class='kw'>WHERE</span> id = <span class='val'>$1</span>`,
+      },
+      {
+        entities: ['audit_log'],
+        conn: [{ from:'audit_log', to:'users' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>audit_log</span> (table_name, record_id, action, old_values, new_values, user_id) <span class='kw'>VALUES</span> (<span class='val'>'certificates'</span>, <span class='val'>$id</span>, <span class='val'>'UPDATE'</span>, <span class='val'>'{status:ELIGIBLE}'</span>, <span class='val'>'{status:ISSUED}'</span>, <span class='val'>$owner</span>)`,
+      },
+    ],
+  },
+  corporate: {
+    label: 'Corporate Booking',
+    color: 'var(--commercial)',
+    stateMachine: ['INQUIRY','QUOTED','ACCEPTED','SCHEDULED','DELIVERED','INVOICED'],
+    steps: [
+      {
+        entities: ['companies','company_contacts'],
+        conn: [{ from:'company_contacts', to:'companies' }],
+        log: `<span class='kw'>SELECT</span> c.*, cc.email, cc.name <span class='kw'>FROM</span> <span class='tbl'>companies</span> c <span class='kw'>JOIN</span> <span class='tbl'>company_contacts</span> cc <span class='kw'>ON</span> cc.company_id = c.id <span class='kw'>WHERE</span> cc.is_primary = true AND c.id = <span class='val'>$1</span>`,
+      },
+      {
+        entities: ['quotes','quote_line_items','course_pricing'],
+        conn: [{ from:'quote_line_items', to:'quotes' }, { from:'quote_line_items', to:'course_pricing' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>quotes</span> (client_type, company_id, status, created_by, client_idempotency_key) <span class='kw'>VALUES</span> (<span class='val'>'COMPANY'</span>, <span class='val'>$c</span>, <span class='val'>'DRAFT'</span>, <span class='val'>$admin</span>, <span class='val'>$key</span>) -- quote_number trigger-assigned; <span class='kw'>INSERT INTO</span> <span class='tbl'>quote_line_items</span> (quote_id, course_id, training_mode, student_level, quantity, unit_price) <span class='kw'>SELECT</span> ..., <span class='val'>'ON_SITE_CORPORATE'</span>, ..., <span class='val'>14</span>, cp.price_zar <span class='kw'>FROM</span> <span class='tbl'>course_pricing</span> cp WHERE cp.effective_to IS NULL`,
+      },
+      {
+        entities: ['cohorts'],
+        conn: [{ from:'cohorts', to:'courses' }, { from:'cohorts', to:'companies' }, { from:'cohorts', to:'trainers' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>cohorts</span> (course_id, training_mode, cohort_type, company_id, primary_trainer_id, max_capacity, status) <span class='kw'>VALUES</span> (<span class='val'>$course</span>, <span class='val'>'ON_SITE_CORPORATE'</span>, <span class='val'>'COMPANY_HOSTED'</span>, <span class='val'>$company</span>, <span class='val'>$trainer</span>, 18, <span class='val'>'SCHEDULED'</span>)`,
+      },
+      {
+        entities: ['enrollments','students'],
+        conn: [{ from:'enrollments', to:'cohorts' }, { from:'enrollments', to:'students' }, { from:'enrollments', to:'quote_line_items' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>enrollments</span> (student_id, cohort_id, status, student_level, sponsor_company_id, quote_line_item_id) <span class='kw'>SELECT</span> s.id, <span class='val'>$cohort</span>, <span class='val'>'REGISTERED'</span>, <span class='val'>$level</span>, <span class='val'>$company</span>, <span class='val'>$qli</span> <span class='kw'>FROM</span> <span class='tbl'>students</span> s ... -- 14 employees enrolled; sponsor guard enforced by trigger`,
+      },
+      {
+        entities: ['invoices','invoice_line_items'],
+        conn: [{ from:'invoices', to:'companies' }, { from:'invoices', to:'quotes' }, { from:'invoice_line_items', to:'invoices' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>invoices</span> (bill_to, company_id, quote_id, grand_total, status, client_idempotency_key) <span class='kw'>VALUES</span> (<span class='val'>'COMPANY'</span>, <span class='val'>$company</span>, <span class='val'>$quote</span>, <span class='val'>4900000</span>, <span class='val'>'ISSUED'</span>, <span class='val'>$key</span>) -- R49 000 company invoice, quote → invoice conversion stamped`,
+      },
+      {
+        entities: ['corporate_training_checklists'],
+        conn: [{ from:'corporate_training_checklists', to:'cohorts' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>corporate_training_checklists</span> (cohort_id, completed_by, candidates_expected, novice_count, renewal_count, training_on_site, company_has_machines) <span class='kw'>VALUES</span> (<span class='val'>$cohort</span>, <span class='val'>$trainer</span>, <span class='val'>14</span>, <span class='val'>9</span>, <span class='val'>5</span>, true, true) -- Form 111`,
+      },
+    ],
+  },
+  assess: {
+    label: 'Record Assessment',
+    color: 'var(--learning)',
+    steps: [
+      {
+        entities: ['assessment_schemas','courses'],
+        conn: [{ from:'assessment_schemas', to:'courses' }],
+        log: `<span class='kw'>SELECT</span> * <span class='kw'>FROM</span> <span class='tbl'>assessment_schemas</span> <span class='kw'>WHERE</span> course_id = <span class='val'>$1</span> AND is_required = true <span class='kw'>ORDER BY</span> sort_order -- 3 schemas: Theory Test, Practical 1, Final Practical`,
+      },
+      {
+        entities: ['enrollments','students'],
+        conn: [{ from:'enrollments', to:'students' }],
+        log: `<span class='kw'>SELECT</span> e.id, s.first_name, s.last_name, s.student_number <span class='kw'>FROM</span> <span class='tbl'>enrollments</span> e <span class='kw'>JOIN</span> <span class='tbl'>students</span> s <span class='kw'>ON</span> s.id = e.student_id <span class='kw'>WHERE</span> e.cohort_id = <span class='val'>$1</span> AND e.status = <span class='val'>'ACTIVE'</span>`,
+      },
+      {
+        entities: ['assessment_results'],
+        conn: [{ from:'assessment_results', to:'enrollments' }, { from:'assessment_results', to:'assessment_schemas' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>assessment_results</span> (enrollment_id, assessment_schema_id, score, max_score, percentage, result, assessed_by, recorded_at, locked_at) <span class='kw'>VALUES</span> (<span class='val'>$e</span>, <span class='val'>$schema</span>, <span class='val'>78</span>, 100, 78.0, <span class='val'>'PASS'</span>, <span class='val'>$trainer</span>, now(), now()+<span class='val'>'1 hour'</span>)`,
+      },
+      {
+        entities: ['assessment_evidence'],
+        conn: [{ from:'assessment_evidence', to:'assessment_results' }, { from:'assessment_evidence', to:'enrollments' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>assessment_evidence</span> (assessment_id, enrollment_id, evidence_type, file_url, description, uploaded_by) <span class='kw'>VALUES</span> (<span class='val'>$a</span>, <span class='val'>$e</span>, <span class='val'>'PHOTO'</span>, <span class='val'>$s3_url</span>, <span class='val'>'Practical competency evidence'</span>, <span class='val'>$trainer</span>)`,
+      },
+      {
+        entities: ['enrollments'],
+        conn: [],
+        log: `<span class='kw'>UPDATE</span> <span class='tbl'>enrollments</span> <span class='kw'>SET</span> theory_avg = <span class='val'>76.4</span>, practical_avg = <span class='val'>81.2</span>, overall_result = <span class='val'>'PASS'</span> <span class='kw'>WHERE</span> id = <span class='val'>$e</span> AND status = <span class='val'>'ACTIVE'</span>`,
+      },
+      {
+        entities: ['audit_log'],
+        conn: [{ from:'audit_log', to:'users' }],
+        log: `<span class='kw'>INSERT INTO</span> <span class='tbl'>audit_log</span> (table_name, record_id, action, new_values, user_id) <span class='kw'>VALUES</span> (<span class='val'>'assessment_results'</span>, <span class='val'>$id</span>, <span class='val'>'INSERT'</span>, <span class='val'>$data</span>, <span class='val'>$trainer</span>)`,
+      },
+    ],
+  },
+};
+
+// Columns that are both primary key and foreign key: the source data marks them only as PRIMARY KEY.
+const PK_FKS = [
+  ['user_2fa','user_id','users'],
+  ['notification_preferences','user_id','users'],
+  ['cohort_trainers','cohort_id','cohorts'],
+  ['cohort_trainers','trainer_id','trainers'],
+];
+
+const DOMAINS = [
+  ['org','Organisational'],['people','People & Auth'],['course','Course Catalogue'],['delivery','Delivery'],
+  ['learning','Learning Records'],['cert','Certification'],['commercial','Commercial'],
+  ['financial','Financial'],['comms','Communication'],['reviews','Reviews'],['governance','Governance'],['cms','CMS (cms schema, Directus)'],
+];
+const DLABEL = Object.fromEntries(DOMAINS);
+
+// Step titles, plus the status value each step actually writes (table, column, enum, value).
+const STEP_META = {
+  enrol: [
+    ['Look up the learner'],
+    ['Find an open cohort with seats left'],
+    ['Create the enrollment', ['enrollments','status','enrollment_status','REGISTERED']],
+    ['Issue the student invoice', ['invoices','status','invoice_status','ISSUED']],
+    ['Record the status transition', ['enrollment_status_history','to_status','enrollment_status','REGISTERED']],
+    ['Write the audit row'],
+  ],
+  attendance: [
+    ['Confirm the trainer is clocked in'],
+    ["Load today's lesson"],
+    ['List the active learners'],
+    ['Insert the attendance marks', ['attendance','status','attendance_status','PRESENT']],
+    ['Write the audit rows'],
+  ],
+  certify: [
+    ['Check eligibility: passed and paid up'],
+    ['Pick the certificate templates'],
+    ['Create the certificate row', ['certificates','status','certificate_status','ELIGIBLE']],
+    ['Stamp the PDF and issue', ['certificates','status','certificate_status','ISSUED']],
+    ['Write the audit row'],
+  ],
+  corporate: [
+    ['Load the company and its primary contact'],
+    ['Draft the quote from the price list', ['quotes','status','quote_status','DRAFT']],
+    ['Schedule a company-hosted cohort', ['cohorts','status','cohort_status','SCHEDULED']],
+    ['Enrol the sponsored employees', ['enrollments','status','enrollment_status','REGISTERED']],
+    ['Convert the quote into an invoice', ['invoices','status','invoice_status','ISSUED']],
+    ['Capture the on-site checklist'],
+  ],
+  assess: [
+    ["Load the course's assessment plan"],
+    ['List the active learners'],
+    ['Record the score', ['assessment_results','result','assessment_result','PASS']],
+    ['Attach the evidence'],
+    ['Roll the result up to the enrollment', ['enrollments','overall_result','assessment_result','PASS']],
+    ['Write the audit row'],
+  ],
+};
+
+// ───────── model ─────────
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const IDS = Object.keys(ENTITIES);
+const T = {};
+const FKS = [];            // one per FK column
+const PAIRS = new Map();   // "from|to" -> {from,to,cols[]}
+IDS.forEach(id => { T[id] = Object.assign({ id, out: [], inn: [] }, ENTITIES[id]); });
+function addFk(from, col, to, nullable, onDelete) {
+  if (!T[to]) return;
+  const fk = { from, col, to, nullable, onDelete };
+  FKS.push(fk); T[from].out.push(fk); T[to].inn.push(fk);
+  const k = from + '|' + to;
+  if (!PAIRS.has(k)) PAIRS.set(k, { from, to, cols: [] });
+  PAIRS.get(k).cols.push(col);
+}
+IDS.forEach(id => T[id].fields.forEach(f => {
+  const c = f.constraint || '';
+  const m = /→ ([\w.]+)(?: \(ON DELETE ([A-Z ]+)\))?/.exec(c);
+  f.nullable = /^nullable/.test(c);
+  f.unique = /UNIQUE/.test(c);
+  f.isEnum = /, enum$/.test(c);
+  const d = /default (.+?)(?:, enum)?(?: →.*)?$/.exec(c);
+  f.def = d ? d[1] : (/gen_random_uuid\(\)/.test(c) ? 'gen_random_uuid()' : null);
+  if (m) { f.to = m[1]; f.onDelete = m[2] || null; addFk(id, f.name, m[1], f.nullable, f.onDelete); }
+}));
+PK_FKS.forEach(([t, col, to]) => {
+  const f = T[t].fields.find(x => x.name === col);
+  if (f && !f.to) { f.to = to; addFk(t, col, to, false, null); }
+});
+const neighbours = id => new Set([...T[id].out.map(f => f.to), ...T[id].inn.map(f => f.from)]);
+const ENUMS = new Map();
+IDS.forEach(id => T[id].enums.forEach(e => { if (!ENUMS.has(e.name)) ENUMS.set(e.name, { name: e.name, vals: e.vals, tables: [] }); ENUMS.get(e.name).tables.push(id); }));
+
+Object.entries(SCENARIOS).forEach(([key, sc]) => {
+  sc.key = key;
+  sc.steps.forEach((st, i) => {
+    const meta = (STEP_META[key] || [])[i] || [];
+    st.title = meta[0] || 'Step ' + (i + 1);
+    st.state = meta[1] || null;
+    st.notes = [];
+    let s = st.log.replace(/ -- (.*?)(?:; (?=<span class='kw'>)|$)/gs, (m, c) => { st.notes.push(c.replace(/<[^>]+>/g, '')); return m.endsWith('; ') ? ';\n\n' : ''; });
+    s = s.replace(/; (?=<span class='kw'>)/g, ';\n\n')
+         .replace(/ (<span class='kw'>(?:FROM|JOIN|WHERE|VALUES|SET|RETURNING|ORDER BY|ON CONFLICT DO NOTHING|SELECT)<\/span>)/g, '\n$1')
+         .replace(/ AND /g, '\n  AND ');
+    st.sql = s;
+    st.writes = new Map([...st.log.matchAll(/(INSERT|UPDATE)(?: INTO)?<\/span> <span class='tbl'>([\w.]+)/g)].map(m => [m[2], m[1]]));
+    const first = /<span class='kw'>(\w+)/.exec(st.log);
+    st.op = first && first[1] === 'SELECT' ? 'READ' : first ? first[1] : 'READ';
+  });
+});
+
+const dcol = id => `var(--${T[id].domain})`;
+
+// ───────── state ─────────
+const S = { sel: null, hover: null, domains: new Set(), scn: null, step: 0, playing: false, zoom: 1, tab: 'overview', view: 'map' };
+let timer = null;
+const PLAY_MS = 4500;
+
+// ───────── layout ─────────
+const CW = 184, CH = 64, GX = 12, GY = 12, PAD = 14, HEAD = 30, BGAP = 14, MARGIN = 16;
+let W = 0, H = 0;
+const canvas = $('#canvas'), wrap = $('#wrap'), sizer = $('#sizer');
+const cardEl = {}, blockEl = {};
+
+function buildCards() {
+  DOMAINS.forEach(([d, label]) => {
+    const n = IDS.filter(id => T[id].domain === d).length;
+    const b = document.createElement('div');
+    b.className = 'block d-' + d;
+    b.innerHTML = `<h2>${esc(label)}<span>${n} ${n === 1 ? 'table' : 'tables'}</span></h2>`;
+    canvas.appendChild(b); blockEl[d] = b;
+  });
+  IDS.forEach(id => {
+    const t = T[id];
+    const el = document.createElement('button');
+    el.className = 'card d-' + t.domain;
+    el.dataset.id = id;
+    el.innerHTML = `<span class="nm">${esc(id).replace(/_/g, '_<wbr>')}</span>
+      <span class="meta"><span title="columns"><b>${t.fields.length}</b> cols</span><span title="foreign keys this table holds"><b>${t.out.length}</b> out</span><span title="foreign keys pointing at this table"><b>${t.inn.length}</b> in</span></span>
+      <span class="tag"></span>`;
+    el.addEventListener('click', e => { e.stopPropagation(); select(id); });
+    el.addEventListener('mouseenter', () => { if (!S.sel) neighbours(id).forEach(n => cardEl[n].classList.add('nb')); });
+    el.addEventListener('mouseleave', () => { if (!S.sel) IDS.forEach(n => cardEl[n].classList.remove('nb')); });
+    canvas.appendChild(el); cardEl[id] = el;
+  });
+}
+
+function layout() {
+  const SLACK = PAD * 2 + BGAP - GX;   // lets two blocks whose cards total one full row sit side by side
+  const avail = (wrap.clientWidth || 1000) - MARGIN * 2 - SLACK;
+  const cols = Math.max(3, Math.min(9, Math.floor((avail - PAD * 2 + GX) / (CW + GX))));
+  const rowW = cols * CW + (cols - 1) * GX + PAD * 2;
+  let x = MARGIN, y = MARGIN, rowH = 0;
+  DOMAINS.forEach(([d]) => {
+    const ids = IDS.filter(id => T[id].domain === d);
+    const bw = Math.min(ids.length, cols);
+    const rows = Math.ceil(ids.length / bw);
+    const w = bw * CW + (bw - 1) * GX + PAD * 2;
+    const h = HEAD + rows * CH + (rows - 1) * GY + PAD;
+    if (x > MARGIN && x + w > MARGIN + rowW + SLACK) { x = MARGIN; y += rowH + BGAP; rowH = 0; }
+    const b = blockEl[d];
+    b.style.cssText = `left:${x}px;top:${y}px;width:${w}px;height:${h}px`;
+    ids.forEach((id, i) => {
+      const t = T[id];
+      t.x = x + PAD + (i % bw) * (CW + GX);
+      t.y = y + HEAD + Math.floor(i / bw) * (CH + GY);
+      cardEl[id].style.left = t.x + 'px'; cardEl[id].style.top = t.y + 'px';
+    });
+    x += w + BGAP; rowH = Math.max(rowH, h);
+  });
+  W = MARGIN * 2 + rowW + SLACK; H = y + rowH + MARGIN;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  applyZoom();
+  paint();
+}
+function applyZoom() {
+  canvas.style.transform = `scale(${S.zoom})`;
+  sizer.style.width = W * S.zoom + 'px'; sizer.style.height = H * S.zoom + 'px';
+}
+function setZoom(z) { S.zoom = Math.max(0.35, Math.min(1.6, z)); applyZoom(); }
+
+// ───────── map highlighting (no lines on the map: relationships get their own view) ─────────
+function fkDir(a, b) { return PAIRS.has(a + '|' + b) ? [a, b] : PAIRS.has(b + '|' + a) ? [b, a] : null; }
+function paint() {
+  const sel = S.sel, filt = S.domains.size > 0;
+  canvas.classList.toggle('focus', !!sel);
+  const par = sel ? new Set(T[sel].out.map(f => f.to)) : null, chi = sel ? new Set(T[sel].inn.map(f => f.from)) : null;
+  IDS.forEach(id => {
+    const el = cardEl[id], c = el.classList;
+    const p = !!par && par.has(id) && id !== sel, ch = !!chi && chi.has(id) && id !== sel;
+    c.toggle('sel', sel === id); c.toggle('nb', p || ch);
+    c.toggle('off', filt && !S.domains.has(T[id].domain));
+    el.querySelector('.tag').textContent = p && ch ? 'parent + child' : p ? 'parent' : ch ? 'child' : '';
+  });
+}
+
+// ───────── ER diagrams ─────────
+const pkOf = id => T[id].fields.find(f => f.pk) || T[id].fields[0];
+// A row that carries data-to is a foreign-key column; its connector runs to the row carrying the matching data-pk.
+function erRow(f, o = {}) {
+  const a = [];
+  if (o.pkKey) a.push(`data-pk="${esc(o.pkKey)}"`);
+  if (o.to) a.push(`data-to="${esc(o.to)}" data-color="${o.color}"${f.nullable ? ' data-null="1"' : ''}${f.unique || f.pk ? ' data-uq="1"' : ''}`);
+  return `<div class="er-r${f.pk ? ' pk' : ''}" ${a.join(' ')}><span class="rn">${esc(f.name)}</span>${o.badge || (o.type ? `<span class="rty">${esc(f.type)}</span>` : '')}</div>`;
+}
+function erCard(id, key, rows, o = {}) {
+  return `<button class="ec d-${T[id].domain}${o.cls ? ' ' + o.cls : ''}" data-card="${esc(key)}" data-go="${esc(id)}">
+    <div class="ec-h"><span class="ec-n">${esc(id)}</span>${o.badge || ''}</div>${rows.join('')}${o.foot || ''}</button>`;
+}
+function drawLinks(root) {
+  const svg = root.querySelector(':scope > svg.links'), R = root.getBoundingClientRect();
+  svg.setAttribute('width', root.scrollWidth); svg.setAttribute('height', root.scrollHeight);
+  let h = '';
+  root.querySelectorAll('[data-to]').forEach(row => {
+    const tgt = root.querySelector(`[data-pk="${CSS.escape(row.dataset.to)}"]`); if (!tgt) return;
+    const ca = row.closest('.ec'), cb = tgt.closest('.ec');
+    const a = row.getBoundingClientRect(), b = tgt.getBoundingClientRect();
+    const x1 = ca.getBoundingClientRect().left - R.left, y1 = a.top - R.top + a.height / 2;
+    const x2 = cb.getBoundingClientRect().right - R.left, y2 = b.top - R.top + b.height / 2;
+    const dx = Math.max(40, (x1 - x2) / 2), lookup = row.dataset.lookup;
+    let d = `<path class="m" d="M${x1} ${y1}C${x1 - dx} ${y1} ${x2 + dx} ${y2} ${x2} ${y2}"/>`;
+    if (!lookup) {
+      d += row.dataset.uq ? `<path d="M${x1 - 7} ${y1 - 6}V${y1 + 6}"/>`                           // one
+                          : `<path d="M${x1 - 12} ${y1}L${x1} ${y1 - 6}M${x1 - 12} ${y1}L${x1} ${y1 + 6}"/>`; // many (crow's foot)
+      d += `<path d="M${x2 + 7} ${y2 - 6}V${y2 + 6}"/>`;                                            // one, at the referenced key
+    }
+    h += `<g class="lk${row.dataset.null ? ' opt' : ''}${lookup ? ' lookup' : ''}" data-a="${esc(ca.dataset.card)}" data-b="${esc(cb.dataset.card)}" style="stroke:${row.dataset.color}">${d}</g>`;
+  });
+  svg.innerHTML = h;
+  return svg;
+}
+// Children hang off one vertical bus. The pinned card is sticky and only owns a short horizontal stub that
+// meets the bus, so nothing has to be redrawn while scrolling: the browser moves both layers itself.
+function drawBus(er) {
+  const svg = er.querySelector(':scope > svg.links'), pin = er.querySelector('.pin'), kids = er.querySelector('.col.kids');
+  const rows = [...kids.querySelectorAll('[data-to]')], pk = pin.querySelector('[data-pk="C"]');
+  svg.setAttribute('width', er.scrollWidth); svg.setAttribute('height', er.scrollHeight);
+  if (!rows.length || !pk) { svg.innerHTML = ''; return; }
+  const R = er.getBoundingClientRect(), K = kids.getBoundingClientRect(), P = pin.getBoundingClientRect(), k = pk.getBoundingClientRect();
+  const xb = K.left - R.left - 60, col = dcol(S.sel);
+  const y0 = K.top - R.top + (k.top - P.top) + k.height / 2;        // stub height when the pin is not stuck
+  let h = '', lo = y0, hi = y0;
+  rows.forEach(row => {
+    const a = row.getBoundingClientRect(), card = row.closest('.ec');
+    const x = card.getBoundingClientRect().left - R.left, y = a.top - R.top + a.height / 2;
+    lo = Math.min(lo, y); hi = Math.max(hi, y);
+    const end = row.dataset.uq ? `<path d="M${x - 7} ${y - 6}V${y + 6}"/>` : `<path d="M${x - 12} ${y}L${x} ${y - 6}M${x - 12} ${y}L${x} ${y + 6}"/>`;
+    h += `<g class="lk${row.dataset.null ? ' opt' : ''}" data-a="${esc(card.dataset.card)}" data-b="C" style="stroke:${row.dataset.color}"><path class="m" d="M${xb} ${y}H${x}"/>${end}<circle class="dot" cx="${xb}" cy="${y}" r="2.6" style="fill:${row.dataset.color}"/></g>`;
+  });
+  svg.innerHTML = `<g class="lk trunk" style="stroke:${col}"><path d="M${xb} ${lo}V${hi}"/></g>` + h;
+  // stub: lives in the pin's own layer, so it travels with the sticky card
+  const c = pk.closest('.ec').getBoundingClientRect(), x1 = c.right - P.left, y1 = k.top - P.top + k.height / 2, x2 = K.left - 60 - P.left;
+  pin.querySelector(':scope > svg.links').insertAdjacentHTML('beforeend', `<g class="lk trunk" style="stroke:${col}"><path d="M${x1} ${y1}H${x2}M${x1 + 7} ${y1 - 6}V${y1 + 6}"/></g>`);
+}
+function hilite(root, key) {
+  root._hk = key || null;
+  root.classList.toggle('hov', !!key);
+  const on = new Set([key]);
+  root.querySelectorAll('.lk').forEach(g => { const m = !!key && (g.dataset.a === key || g.dataset.b === key); g.classList.toggle('hl', m); if (m) { on.add(g.dataset.a); on.add(g.dataset.b); } });
+  root.querySelectorAll('.ec').forEach(c => c.classList.toggle('hl', !!key && on.has(c.dataset.card)));
+}
+function relinks() {
+  if (S.scn) document.querySelectorAll('#scnview .er').forEach(drawLinks);
+  else if (S.view === 'rel') drawRel();
+}
+
+function renderRel() {
+  const id = S.sel, t = T[id], col = dcol(id);
+  const parents = [...new Set(t.out.map(f => f.to).filter(p => p !== id))];
+  const kids = [...new Set(t.inn.map(f => f.from).filter(k => k !== id))]
+    .sort((a, b) => DOMAINS.findIndex(d => d[0] === T[a].domain) - DOMAINS.findIndex(d => d[0] === T[b].domain));
+  const pk = pkOf(id);
+  const mid = [];
+  t.fields.forEach(f => {
+    if (!f.pk && !f.to) return;
+    const self = f.to === id;
+    const badge = self ? '<span class="b">self-reference</span>' : f.onDelete ? `<span class="b del">ON DELETE ${esc(f.onDelete)}</span>` : '';
+    mid.push(erRow(f, { pkKey: f === pk ? 'C' : null, to: f.to && !self ? 'P:' + f.to : null, color: col, badge, type: !f.to }));
+  });
+  const rest = t.fields.length - mid.length;
+  $('#relview').innerHTML = `<div class="er">
+    <svg class="links"></svg>
+    <div class="pin"><svg class="links"></svg>
+    <div class="col"><div class="col-h">References <span class="num">${parents.length}</span></div>
+      ${parents.map(p => erCard(p, 'P:' + p, [erRow(pkOf(p), { pkKey: 'P:' + p, type: true })])).join('') || `<div class="empty">${esc(id)} holds no foreign keys to other tables.</div>`}</div>
+    <div class="col mid"><div class="col-h">Pinned table</div>
+      ${erCard(id, 'C', mid, { foot: rest > 0 ? `<div class="ec-f">+ ${rest} other columns, listed in the panel</div>` : '' })}</div>
+    </div>
+    <div class="col kids"><div class="col-h">Referenced by <span class="num">${kids.length}</span></div>
+      ${kids.map(k => erCard(k, 'K:' + k, T[k].fields.filter(f => f.to === id).map(f => erRow(f, { to: 'C', color: dcol(k), badge: f.onDelete ? `<span class="b del">${esc(f.onDelete)}</span>` : '' })))).join('') || `<div class="empty">No other table references ${esc(id)}.</div>`}</div>
+  </div>`;
+  drawRel();
+}
+function drawRel() {
+  const er = $('#relview .er'); if (!er) return;
+  const pin = er.querySelector('.pin');
+  pin.style.position = pin.offsetHeight > wrap.clientHeight - 90 ? 'relative' : '';   // too tall to pin: let it scroll
+  drawLinks(pin); drawBus(er);
+}
+
+function renderLanes() {
+  const sc = S.scn, box = $('#scnview');
+  box.style.setProperty('--sc', sc.color);
+  box.innerHTML = sc.steps.map((st, i) => {
+    const nodes = [...st.entities], links = [];
+    (st.conn || []).forEach(c => {
+      const dir = fkDir(c.from, c.to), [a, b] = dir || [c.from, c.to];
+      [a, b].forEach(n => { if (!nodes.includes(n)) nodes.push(n); });
+      links.push({ a, b, fk: !!dir });
+    });
+    const layer = {};
+    const depth = n => { if (layer[n] != null) return layer[n]; layer[n] = 0; const o = links.filter(l => l.a === n && l.b !== n).map(l => depth(l.b)); return layer[n] = o.length ? 1 + Math.max(...o) : 0; };
+    nodes.forEach(depth);
+    const cols = [];
+    nodes.forEach(n => (cols[layer[n]] = cols[layer[n]] || []).push(n));
+    const key = n => i + ':' + n;
+    const card = n => {
+      const rows = [];
+      if (links.some(l => l.b === n)) rows.push(erRow(pkOf(n), { pkKey: key(n), type: true }));
+      links.filter(l => l.a === n).forEach(l => {
+        if (!l.fk) { rows.push(`<div class="er-r lk-row" data-to="${esc(key(l.b))}" data-lookup="1" data-color="${sc.color}"><span class="rn">price lookup</span><span class="b">not a foreign key</span></div>`); return; }
+        let fs = T[n].fields.filter(f => f.to === l.b);
+        if (fs.some(f => !f.nullable)) fs = fs.filter(f => !f.nullable);
+        fs.forEach(f => rows.push(erRow(f, { to: key(l.b), color: sc.color })));
+      });
+      if (st.state && st.state[0] === n) rows.push(`<div class="er-r"><span class="rn">${esc(st.state[1])}</span><span class="rv">${esc(st.state[3])}</span></div>`);
+      const w = st.writes.get(n), used = st.entities.includes(n);
+      const badge = w ? `<span class="op ${w}">${w}</span>` : used ? '<span class="op READ">READ</span>' : '<span class="b">existing row</span>';
+      return erCard(n, key(n), rows, { badge, cls: used ? '' : 'ghost' });
+    };
+    return `<section class="lane" data-step="${i}">
+      <header><span class="sn">${i + 1}</span><span class="st">${esc(st.title)}</span></header>
+      <div class="er"><svg class="links"></svg>${cols.map(c => `<div class="col">${c.map(card).join('')}</div>`).join('')}</div>
+    </section>`;
+  }).join('');
+  box.querySelectorAll('.er').forEach(drawLinks);
+}
+
+// ───────── views ─────────
+const FOOT = `<svg width="30" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0 7H30M18 7L30 1M18 7L30 13"/></svg>`;
+const BAR = `<svg width="30" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0 7H30M7 1V13"/></svg>`;
+const DASH = `<svg width="30" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0 7H30" stroke-dasharray="5 4"/></svg>`;
+function show() {
+  const mode = S.scn ? 'scn' : S.view;
+  document.body.dataset.view = mode;
+  $('#mapview').hidden = mode !== 'map'; $('#relview').hidden = mode !== 'rel'; $('#scnview').hidden = mode !== 'scn';
+  document.querySelectorAll('.segc button').forEach(b => b.classList.toggle('on', b.dataset.view === mode));
+  const info = $('#vb-info');
+  if (mode === 'scn') info.innerHTML = `<span><b style="color:${S.scn.color}">${esc(S.scn.label)}</b>, one lane per query</span><span class="lg">${FOOT}foreign key used by the step</span><span class="lg"><svg width="30" height="14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M0 7H30" stroke-dasharray="2 5"/></svg>lookup</span><button class="tb" id="scn-exit">Exit scenario</button>`;
+  else if (mode === 'rel') info.innerHTML = `<span class="lg">${FOOT}many rows, the side holding the foreign key</span><span class="lg">${BAR}one row, the referenced key</span><span class="lg">${DASH}nullable, the link is optional</span>`;
+  else info.innerHTML = S.sel ? `<span><b>${esc(S.sel)}</b> is pinned. A <b>parent</b> is a table it references, a <b>child</b> is a table that references it.</span>` : '<span>Click a table to open its relationships.</span>';
+  if (mode === 'map') { paint(); if (S.sel) reveal([S.sel]); }
+  else if (mode === 'rel') { wrap.scrollTo(0, 0); renderRel(); }
+}
+
+function reveal(ids) {
+  let x1 = 1e9, y1 = 1e9, x2 = 0, y2 = 0;
+  ids.forEach(id => { const t = T[id]; x1 = Math.min(x1, t.x); y1 = Math.min(y1, t.y); x2 = Math.max(x2, t.x + CW); y2 = Math.max(y2, t.y + CH); });
+  const z = S.zoom, vw = wrap.clientWidth, vh = wrap.clientHeight;
+  const inside = x1 * z >= wrap.scrollLeft && x2 * z <= wrap.scrollLeft + vw && y1 * z >= wrap.scrollTop && y2 * z <= wrap.scrollTop + vh;
+  if (inside) return;
+  wrap.scrollTo({ left: Math.max(0, (x1 + x2) / 2 * z - vw / 2), top: Math.max(0, (y1 + y2) / 2 * z - vh / 2), behavior: 'smooth' });
+}
+
+// ───────── panel ─────────
+const pbody = $('#pbody');
+function setTab(tab) {
+  S.tab = tab;
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+  $('.tab[data-tab=table]').disabled = !S.sel;
+  $('.tab[data-tab=scenario]').disabled = !S.scn;
+  pbody.className = '';
+  if (tab === 'table' && S.sel) renderTable(S.sel);
+  else if (tab === 'scenario' && S.scn) renderScenario();
+  else renderOverview();
+  pbody.scrollTop = 0;
+}
+function tableBtn(id, extra = '') {
+  return `<button class="rel d-${T[id].domain}" data-go="${esc(id)}"><i></i><span class="rt">${esc(id)}</span>${extra}</button>`;
+}
+const SHORT = { org: 'Org', people: 'People', course: 'Course', delivery: 'Delivery', learning: 'Learning', cert: 'Cert', commercial: 'Commercial', financial: 'Financial', comms: 'Comms', reviews: 'Reviews', governance: 'Governance', cms: 'CMS' };
+function matrix() {
+  const n = {}; let max = 0;
+  FKS.forEach(f => { const k = T[f.from].domain + '|' + T[f.to].domain; n[k] = (n[k] || 0) + 1; });
+  DOMAINS.forEach(([a]) => DOMAINS.forEach(([b]) => { if (a !== b || true) max = Math.max(max, n[a + '|' + b] || 0); }));
+  let h = '<div class="mx"><span></span>' + DOMAINS.map(([d]) => `<span class="ch d-${d}"><span>${SHORT[d]}</span></span>`).join('');
+  DOMAINS.forEach(([a]) => {
+    h += `<span class="rh d-${a}">${SHORT[a]}</span>`;
+    DOMAINS.forEach(([b]) => { const v = n[a + '|' + b] || 0; h += `<span class="cell d-${b}${v ? '' : ' z'}${a === b ? ' dg' : ''}" style="--k:${v ? Math.round(14 + 56 * Math.sqrt(v / max)) : 0}" title="${v} foreign keys from ${esc(DLABEL[a])} to ${esc(DLABEL[b])}">${v || 0}</span>`; });
+  });
+  return h + '</div><div class="mx-cap">Each row is the domain holding the foreign keys, each column the domain being referenced. Outlined cells are links inside one domain.</div>';
+}
+function renderOverview() {
+  const fields = IDS.reduce((a, id) => a + T[id].fields.length, 0);
+  const hubs = IDS.slice().sort((a, b) => T[b].inn.length - T[a].inn.length).slice(0, 10);
+  const wide = IDS.slice().sort((a, b) => T[b].fields.length - T[a].fields.length).slice(0, 6);
+  const mh = T[hubs[0]].inn.length, mw = T[wide[0]].fields.length;
+  const bar = (id, n, max) => `<button class="bar d-${T[id].domain}" data-go="${esc(id)}"><span class="bn">${esc(id)}</span><span class="bt"><i style="width:${(n / max * 100).toFixed(1)}%"></i></span><span class="num">${n}</span></button>`;
+  pbody.innerHTML = `
+    <div class="ph" style="color:var(--text);font-family:var(--sans)">Schema at a glance</div>
+    <div class="tiles">
+      <div class="tile"><b>${IDS.length}</b><span>tables</span></div>
+      <div class="tile"><b>${fields}</b><span>columns</span></div>
+      <div class="tile"><b>${FKS.length}</b><span>foreign keys</span></div>
+      <div class="tile"><b>${ENUMS.size}</b><span>enum types</span></div>
+    </div>
+    <h3>Foreign keys between domains</h3>
+    ${matrix()}
+    <h3>Most referenced tables <span class="num">incoming foreign keys</span></h3>
+    ${hubs.map(id => bar(id, T[id].inn.length, mh)).join('')}
+    <h3>Widest tables <span class="num">columns</span></h3>
+    ${wide.map(id => bar(id, T[id].fields.length, mw)).join('')}
+    <h3>How to read the map</h3>
+    <ul class="hint" style="padding-left:16px">
+      <li>Hover a table on the map to outline every table it is linked to.</li>
+      <li>Click a table to open its relationships: what it references on the left, what references it on the right, one connector per foreign-key column.</li>
+      <li>Domain chips isolate domains on the map. Scenarios replay a workflow one query at a time, each as its own small diagram.</li>
+      <li><kbd>/</kbd> search, <kbd>Esc</kbd> clear, <kbd>←</kbd> <kbd>→</kbd> step through a scenario.</li>
+    </ul>`;
+}
+function renderTable(id) {
+  const t = T[id];
+  const parts = [];
+  const schema = id.startsWith('cms.') ? 'cms' : 'public';
+  parts.push(`<div class="d-${t.domain}">
+    <div class="ph">${esc(id)}</div>
+    <div class="psub"><span class="tag">${schema}</span>${esc(DLABEL[t.domain])}, <span class="num">${t.fields.length}</span> columns, <span class="num">${t.out.length}</span> foreign keys out, <span class="num">${t.inn.length}</span> in</div>
+    <div class="note">${esc(t.note)}</div></div>`);
+  parts.push(`<h3>Columns <span class="num">${t.fields.length}</span>${t.fields.length > 10 ? '<input id="ffilter" placeholder="Filter columns" aria-label="Filter columns">' : ''}</h3><div id="flist">`);
+  t.fields.forEach(f => {
+    const b = [];
+    if (f.pk) b.push('<span class="b pk">PK</span>');
+    if (f.to) b.push(`<button class="b to d-${T[f.to].domain}" data-go="${esc(f.to)}" data-pair="${esc(id + '|' + f.to)}">→ ${esc(f.to)}</button>`);
+    if (f.unique) b.push('<span class="b uq">UNIQUE</span>');
+    b.push(f.nullable ? '<span class="b nul">nullable</span>' : '<span class="b nn">NOT NULL</span>');
+    if (f.def) b.push(`<span class="b def" title="${esc(f.def)}">default ${esc(f.def)}</span>`);
+    if (f.onDelete) b.push(`<span class="b del">ON DELETE ${esc(f.onDelete)}</span>`);
+    parts.push(`<div class="f${f.pk ? ' pk' : ''}${f.to ? ' fk d-' + T[f.to].domain : ''}" data-f="${esc(f.name)}"${f.to ? ` data-pair="${esc(id + '|' + f.to)}"` : ''}>
+      <div class="l1"><span class="fn">${esc(f.name)}</span><span class="ft${f.isEnum ? ' en' : ''}">${esc(f.type)}</span></div>
+      <div class="l2">${b.join('')}</div></div>`);
+  });
+  parts.push('</div>');
+  if (t.out.length) {
+    parts.push(`<h3>References <span class="num">${t.out.length}</span></h3>`);
+    t.out.forEach(fk => parts.push(tableBtn(fk.to, `<span class="rc">via ${esc(fk.col)}</span>`).replace('<button', `<button data-pair="${esc(id + '|' + fk.to)}"`)));
+  }
+  if (t.inn.length) {
+    parts.push(`<h3>Referenced by <span class="num">${t.inn.length}</span></h3>`);
+    t.inn.forEach(fk => parts.push(tableBtn(fk.from, `<span class="rc">${esc(fk.col)}</span>`).replace('<button', `<button data-pair="${esc(fk.from + '|' + id)}"`)));
+  }
+  if (t.enums.length) {
+    parts.push(`<h3>Enums <span class="num">${t.enums.length}</span></h3>`);
+    t.enums.forEach(en => {
+      const cols = t.fields.filter(f => f.type.replace('[]', '') === en.name).map(f => f.name);
+      parts.push(`<div class="en-row"><span class="en-name">${esc(en.name)}</span>${cols.length ? `<span class="en-use">on ${esc(cols.join(', '))}</span>` : ''}<div>${en.vals.map(v => `<span class="ev">${esc(v)}</span>`).join('')}</div></div>`);
+    });
+  }
+  if (t.indexes.length) {
+    parts.push(`<h3>Indexes <span class="num">${t.indexes.length}</span></h3>`);
+    t.indexes.forEach(ix => {
+      const k = ix.lastIndexOf(' ('), cols = k > 0 ? ix.slice(0, k) : ix, kind = k > 0 ? ix.slice(k + 2, -1) : '';
+      const chips = kind.split(' ').filter(Boolean).map(w => `<span class="b${w === 'UNIQUE' ? ' uq' : ''}">${esc(w)}</span>`).join('');
+      parts.push(`<div class="ix"><span>${esc(cols)}</span>${chips}</div>`);
+    });
+  }
+  const used = [];
+  Object.values(SCENARIOS).forEach(sc => sc.steps.forEach((st, i) => { if (st.entities.includes(id)) used.push([sc, i]); }));
+  if (used.length) {
+    parts.push(`<h3>Appears in scenarios <span class="num">${used.length}</span></h3>`);
+    used.forEach(([sc, i]) => parts.push(`<button class="rel" data-scn="${sc.key}" data-step="${i}" style="--c:${sc.color}"><i></i><span class="rt">${esc(sc.label)}</span><span class="rc">step ${i + 1}, ${esc(sc.steps[i].title)}</span></button>`));
+  }
+  pbody.innerHTML = parts.join('');
+  const ff = $('#ffilter');
+  if (ff) ff.addEventListener('input', () => {
+    const q = ff.value.trim().toLowerCase();
+    pbody.querySelectorAll('.f').forEach(r => { r.style.display = !q || r.textContent.toLowerCase().includes(q) ? '' : 'none'; });
+  });
+}
+function renderScenario() {
+  const sc = S.scn;
+  pbody.style.setProperty('--sc', sc.color);
+  pbody.innerHTML = `
+    <div id="ctl">
+      <div class="ctl-title">${esc(sc.label)}</div>
+      <div class="ctl-row">
+        <button class="cb" id="c-reset" title="Back to step 1">Reset</button>
+        <button class="cb" id="c-prev">‹ Prev</button>
+        <button class="cb play" id="c-play">Play</button>
+        <button class="cb" id="c-next">Next ›</button>
+        <span class="ctl-count">step <b id="c-n">1</b> of <b>${sc.steps.length}</b></span>
+      </div>
+      <div class="seg">${sc.steps.map((_, i) => `<button data-step="${i}" title="Step ${i + 1}" aria-label="Go to step ${i + 1}"></button>`).join('')}</div>
+      <div id="state"></div>
+    </div>
+    ${sc.steps.map((st, i) => `
+      <div class="step" data-step="${i}">
+        <div class="sh"><span class="sn">${i + 1}</span><span class="st">${esc(st.title)}</span><span class="op ${st.op}">${st.op}</span></div>
+        <div class="tabs2">${st.entities.map(e => `<span class="tc d-${T[e].domain}${st.writes.has(e) ? ' w' : ''}" title="${st.writes.has(e) ? 'written' : 'read'}">${esc(e)}</span>`).join('')}</div>
+        <div class="sql">${st.sql}</div>
+        ${st.notes.map(n => `<div class="sn-note">${esc(n)}</div>`).join('')}
+      </div>`).join('')}
+`;
+  $('#c-reset').onclick = () => { pause(); goStep(0); };
+  $('#c-prev').onclick = () => { pause(); goStep(S.step - 1); };
+  $('#c-next').onclick = () => { pause(); goStep(S.step + 1); };
+  $('#c-play').onclick = togglePlay;
+  syncScenario(false);
+}
+function syncScenario(scroll = true) {
+  const sc = S.scn; if (!sc || S.tab !== 'scenario') return;
+  const n = sc.steps.length;
+  $('#c-n').textContent = S.step + 1;
+  $('#c-prev').disabled = $('#c-reset').disabled = S.step === 0;
+  $('#c-next').disabled = S.step >= n - 1;
+  $('#c-play').textContent = S.playing ? 'Pause' : S.step >= n - 1 ? 'Replay' : 'Play';
+  pbody.querySelectorAll('.seg button').forEach((b, i) => { b.classList.toggle('done', i < S.step); b.classList.toggle('cur', i === S.step); });
+  pbody.querySelectorAll('.step').forEach((el, i) => el.classList.toggle('cur', i === S.step));
+  const st = sc.steps[S.step].state, box = $('#state');
+  if (st) {
+    const en = ENUMS.get(st[2]);
+    box.innerHTML = `<div class="sl">writes <b>${esc(st[0])}.${esc(st[1])}</b> <span style="color:var(--enum)">${esc(st[2])}</span></div><div>${en.vals.map(v => `<span class="ev${v === st[3] ? ' cur' : ''}">${esc(v)}</span>`).join('')}</div>`;
+  } else box.innerHTML = '<div class="sl">No status column is written in this step.</div>';
+  if (scroll) {
+    const el = pbody.querySelector('.step.cur'), ctl = $('#ctl');
+    if (el) pbody.scrollTo({ top: el.offsetTop - ctl.offsetHeight - 6, behavior: 'smooth' });
+  }
+}
+
+// ───────── actions ─────────
+function setHash() {
+  try { history.replaceState(null, '', S.scn ? `#s=${S.scn.key}:${S.step + 1}` : S.sel ? '#t=' + S.sel : location.pathname + location.search); } catch (e) {}
+}
+function openPanel() { $('#panel').classList.remove('closed'); $('#reopen').classList.remove('show'); }
+function hot(pair, on) {
+  const r = $('#relview .er'); if (!r || S.scn || S.view !== 'rel') return;
+  const [from, to] = pair.split('|');
+  hilite(r, on ? (from === S.sel ? 'P:' + to : 'K:' + from) : null);
+}
+function select(id, field) {
+  if (!T[id]) return;
+  S.sel = id;
+  if (S.domains.size && !S.domains.has(T[id].domain)) { S.domains.clear(); syncChips(); }
+  if (!S.scn) S.view = 'rel';
+  openPanel(); setTab('table'); show(); relinks(); setHash();
+  if (field) {
+    const row = pbody.querySelector(`.f[data-f="${CSS.escape(field)}"]`);
+    if (row) { row.scrollIntoView({ block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1800); }
+  }
+}
+function clearSel() { S.sel = null; S.view = 'map'; show(); setTab(S.scn ? 'scenario' : 'overview'); setHash(); }
+function startScenario(key, step = 0) {
+  pause();
+  S.scn = SCENARIOS[key]; S.step = step;
+  document.querySelectorAll('.scn-btn').forEach(b => b.classList.toggle('on', b.dataset.scn === key));
+  openPanel(); show(); renderLanes(); setTab('scenario'); goStep(step);
+}
+function stopScenario() {
+  pause(); S.scn = null; S.step = 0;
+  document.querySelectorAll('.scn-btn').forEach(b => b.classList.remove('on'));
+  show(); setTab(S.sel ? 'table' : 'overview'); setHash();
+}
+function goStep(i) {
+  const sc = S.scn; if (!sc) return;
+  S.step = Math.max(0, Math.min(sc.steps.length - 1, i));
+  let cur = null;
+  document.querySelectorAll('.lane').forEach((l, k) => { l.classList.toggle('cur', k === S.step); if (k === S.step) cur = l; });
+  if (cur) {
+    const top = cur.offsetTop - $('#viewbar').offsetHeight - 10;
+    if (top < wrap.scrollTop || cur.offsetTop + cur.offsetHeight > wrap.scrollTop + wrap.clientHeight) wrap.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+  syncScenario(); setHash();
+}
+function pause() { clearTimeout(timer); timer = null; S.playing = false; if (S.scn) syncScenario(false); }
+function tick() {
+  timer = setTimeout(() => {
+    if (!S.playing || !S.scn) return;
+    if (S.step >= S.scn.steps.length - 1) { pause(); return; }
+    goStep(S.step + 1);
+    if (S.step >= S.scn.steps.length - 1) pause(); else tick();
+  }, PLAY_MS);
+}
+function togglePlay() {
+  if (S.playing) { pause(); return; }
+  if (S.step >= S.scn.steps.length - 1) goStep(0);
+  S.playing = true; syncScenario(false); tick();
+}
+
+// ───────── chrome ─────────
+function syncChips() { document.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', S.domains.has(c.dataset.d))); }
+function buildBar() {
+  $('#chips').innerHTML = DOMAINS.map(([d, label]) => {
+    const n = IDS.filter(id => T[id].domain === d).length;
+    return `<button class="chip d-${d}" data-d="${d}" title="${esc(label)}"><i></i>${esc(label.replace(/ \(.*/, ''))}<span class="num">${n}</span></button>`;
+  }).join('');
+  $('#scns').innerHTML = Object.values(SCENARIOS).map(sc => `<button class="scn-btn" data-scn="${sc.key}" style="--c:${sc.color}">${esc(sc.label)}</button>`).join('');
+  $('#stats').innerHTML = `schema v4.17, <span class="num">${IDS.length}</span> tables (<span class="num">${IDS.filter(i => !i.startsWith('cms.')).length}</span> public + <span class="num">${IDS.filter(i => i.startsWith('cms.')).length}</span> cms), <span class="num">${DOMAINS.length}</span> domains, PostgreSQL 16`;
+}
+$('#bar').addEventListener('click', e => {
+  const chip = e.target.closest('.chip'), sb = e.target.closest('.scn-btn');
+  if (chip) {
+    const d = chip.dataset.d;
+    S.domains.has(d) ? S.domains.delete(d) : S.domains.add(d);
+    if (!S.scn && S.view !== 'map') { S.view = 'map'; show(); }
+    syncChips(); paint();
+    if (S.domains.has(d)) reveal(IDS.filter(id => T[id].domain === d));
+  } else if (sb) {
+    if (S.scn && S.scn.key === sb.dataset.scn) stopScenario(); else startScenario(sb.dataset.scn);
+  }
+});
+$('#tabs').addEventListener('click', e => { const t = e.target.closest('.tab'); if (t && !t.disabled) setTab(t.dataset.tab); });
+$('#pclose').onclick = () => { $('#panel').classList.add('closed'); $('#reopen').classList.add('show'); layout(); relinks(); };
+$('#reopen').onclick = () => { openPanel(); layout(); relinks(); };
+pbody.addEventListener('click', e => {
+  const go = e.target.closest('[data-go]'), scn = e.target.closest('[data-scn]'), step = e.target.closest('[data-step]');
+  if (go) select(go.dataset.go);
+  else if (scn) startScenario(scn.dataset.scn, +scn.dataset.step);
+  else if (step && S.scn) { pause(); goStep(+step.dataset.step); }
+});
+pbody.addEventListener('mouseover', e => { const p = e.target.closest('[data-pair]'); if (p) hot(p.dataset.pair, true); });
+pbody.addEventListener('mouseout', e => { const p = e.target.closest('[data-pair]'); if (p) hot(p.dataset.pair, false); });
+wrap.addEventListener('click', e => {
+  const seg = e.target.closest('.segc button'), go = e.target.closest('.ec[data-go]'), lane = e.target.closest('.lane');
+  if (e.target.closest('#scn-exit')) stopScenario();
+  else if (seg) {
+    if (S.scn) { pause(); S.scn = null; document.querySelectorAll('.scn-btn').forEach(b => b.classList.remove('on')); }
+    if (seg.dataset.view === 'rel' && !S.sel) { select('enrollments'); return; }
+    S.view = seg.dataset.view; show(); setTab(S.sel ? 'table' : 'overview'); setHash();
+  }
+  else if (go) select(go.dataset.go);
+  else if (lane && S.scn) { pause(); goStep(+lane.dataset.step); }
+  else if (e.target.closest('#mapview') && !e.target.closest('.card') && S.sel) clearSel();
+});
+wrap.addEventListener('mouseover', e => { const c = e.target.closest('.ec'); if (c) hilite(c.closest('.er'), c.dataset.card); });
+wrap.addEventListener('mouseout', e => { const c = e.target.closest('.ec'); if (c && !c.contains(e.relatedTarget)) hilite(c.closest('.er'), null); });
+
+wrap.addEventListener('wheel', e => {
+  if (!(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault(); setZoom(S.zoom * (e.deltaY < 0 ? 1.1 : 0.9));
+}, { passive: false });
+$('#zoom-in').onclick = () => setZoom(S.zoom + 0.15);
+$('#zoom-out').onclick = () => setZoom(S.zoom - 0.15);
+$('#zoom-fit').onclick = () => {
+  const fit = Math.min(wrap.clientWidth / W, wrap.clientHeight / H);
+  setZoom(Math.abs(S.zoom - 1) < 0.01 ? fit : 1); wrap.scrollTo(0, 0);
+};
+$('#theme').onclick = e => {
+  const light = document.body.classList.toggle('light');
+  e.currentTarget.textContent = light ? 'Dark' : 'Light';
+  try { localStorage.setItem('abethu-explorer-theme', light ? 'light' : 'dark'); } catch (err) {}
+};
+
+// ───────── search ─────────
+const INDEX = [];
+IDS.forEach(id => {
+  INDEX.push({ kind: 'table', text: id, table: id });
+  T[id].fields.forEach(f => INDEX.push({ kind: 'column', text: f.name, table: id, field: f.name, sub: f.type }));
+});
+ENUMS.forEach(en => {
+  INDEX.push({ kind: 'enum', text: en.name, table: en.tables[0], sub: en.tables.length + (en.tables.length === 1 ? ' table' : ' tables') });
+  en.vals.forEach(v => INDEX.push({ kind: 'value', text: v, table: en.tables[0], sub: en.name }));
+});
+const search = $('#search'), results = $('#results');
+let hits = [], cur = 0;
+function runSearch() {
+  const q = search.value.trim().toLowerCase();
+  if (!q) { results.classList.remove('open'); hits = []; return; }
+  const rank = { table: 0, column: 1, enum: 2, value: 3 };
+  hits = INDEX.filter(x => x.text.toLowerCase().includes(q))
+    .sort((a, b) => (a.text.toLowerCase().startsWith(q) ? 0 : 1) - (b.text.toLowerCase().startsWith(q) ? 0 : 1) || rank[a.kind] - rank[b.kind] || a.text.length - b.text.length)
+    .slice(0, 40);
+  cur = 0;
+  const hl = s => { const i = s.toLowerCase().indexOf(q); return esc(s.slice(0, i)) + '<mark>' + esc(s.slice(i, i + q.length)) + '</mark>' + esc(s.slice(i + q.length)); };
+  results.innerHTML = hits.length ? hits.map((h, i) => `<button class="res d-${T[h.table].domain}${i === 0 ? ' cur' : ''}" data-i="${i}"><span class="k">${h.kind}</span><span>${h.kind === 'table' ? `<span class="t">${hl(h.text)}</span>` : hl(h.text)}</span><span class="s">${h.kind === 'table' ? esc(DLABEL[T[h.table].domain].replace(/ \(.*/, '')) : `<span class="t">${esc(h.table)}</span>${h.kind === 'value' ? ' ' + esc(h.sub) : ''}`}</span></button>`).join('')
+    : '<div class="res-empty">Nothing matches.</div>';
+  results.classList.add('open');
+}
+function pick(i) {
+  const h = hits[i]; if (!h) return;
+  results.classList.remove('open'); search.blur();
+  select(h.table, h.field);
+}
+search.addEventListener('input', runSearch);
+search.addEventListener('focus', runSearch);
+search.addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault(); if (!hits.length) return;
+    cur = (cur + (e.key === 'ArrowDown' ? 1 : -1) + hits.length) % hits.length;
+    results.querySelectorAll('.res').forEach((r, i) => { r.classList.toggle('cur', i === cur); if (i === cur) r.scrollIntoView({ block: 'nearest' }); });
+  } else if (e.key === 'Enter') pick(cur);
+  else if (e.key === 'Escape') { search.value = ''; results.classList.remove('open'); search.blur(); e.stopPropagation(); }
+});
+results.addEventListener('mousedown', e => { const r = e.target.closest('.res'); if (r) { e.preventDefault(); pick(+r.dataset.i); } });
+document.addEventListener('click', e => { if (!e.target.closest('#searchbox')) results.classList.remove('open'); });
+document.addEventListener('keydown', e => {
+  const typing = /INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  if (e.key === '/' && !typing) { e.preventDefault(); search.focus(); search.select(); }
+  else if (typing) return;
+  else if (e.key === 'Escape') { if (S.scn) stopScenario(); else if (S.sel) clearSel(); }
+  else if (S.scn && e.key === 'ArrowRight') { pause(); goStep(S.step + 1); }
+  else if (S.scn && e.key === 'ArrowLeft') { pause(); goStep(S.step - 1); }
+});
+
+// ───────── init ─────────
+try { if (localStorage.getItem('abethu-explorer-theme') === 'light') { document.body.classList.add('light'); $('#theme').textContent = 'Dark'; } } catch (e) {}
+buildBar(); buildCards(); layout(); show(); setTab('overview');
+let rz = null;
+window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { layout(); relinks(); }, 120); });
+(function fromHash() {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith('t=') && T[h.slice(2)]) select(h.slice(2));
+  else if (h.startsWith('s=')) { const [k, n] = h.slice(2).split(':'); if (SCENARIOS[k]) startScenario(k, Math.max(0, (parseInt(n, 10) || 1) - 1)); }
+})();
+</script>
+</body>
+</html>
